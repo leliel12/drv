@@ -1,8 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-# coding: utf-8
+# Copyright (c) 2018, Cabral, Juan; Luczywo, Nadia; Zanazi Jose Luis
+# All rights reserved.
 
-# In[1]:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 
+# * Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+
+# * Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+
+# * Neither the name of the copyright holder nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# =============================================================================
+# FUTURE
+# =============================================================================
+
+from __future__ import unicode_literals
+
+
+# =============================================================================
+# DOCS
+# =============================================================================
+
+__doc__ = """DRV processes have been developed to support Group Decision
+Making.
+
+They are applicable to the cases in which
+all members of the group operate in the same organization and, therefore,
+they must share organizational values, knowledge and preferences.
+Assumes that it is necessary to generate agreement on the preferences of
+group members.
+
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
 import numpy as np
 
@@ -13,9 +65,9 @@ import attr
 import joblib
 
 from skcriteria import norm
-from skcriteria.madm.simple import WSum
+#~ from skcriteria.madm import
 
-import normtests
+from . import normtests
 
 
 # =============================================================================
@@ -63,7 +115,6 @@ def subproblem(mtx, climit, ntest, ntest_kwargs):
         nproducts, climit)
 
     n_sts, pvals = ntest(nproducts, axis=1, **ntest_kwargs)
-    import ipdb; ipdb.set_trace()
 
     return {"nproducts": nproducts, "sctotal": sctotal,
             "ssw": ssw, "ssb": ssb, "ssu": scu, "ivr": ivr,
@@ -118,6 +169,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
                 ntest=ntest, ntest_kwargs=ntest_kwargs)
             for amtx in abc)
 
+    # copy alt results to the global results
     results.update({
         "anproducts": tuple(r["nproducts"] for r in wresults),
         "asctotal": np.hstack(r["sctotal"] for r in wresults),
@@ -131,7 +183,6 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
         "aagg": np.vstack(r["resume"] for r in wresults)})
 
     return results
-
 
 
 # =============================================================================
@@ -180,7 +231,7 @@ class DRVProcess(object):
     njobs = attr.ib(default=None)
     ntest = attr.ib(default="shapiro")
     ntest_kwargs = attr.ib(default=None)
-    aggregator = attr.ib(default
+    #~ aggregator = attr.ib(default
 
     @climit.validator
     def climit_check(self, attribute, value):
@@ -219,109 +270,9 @@ class DRVProcess(object):
             ntest_kwargs=self.ntest_kwargs, data=None, **drv_result)
 
 
-
-
-# =============================================================================
-# TESTS
-# =============================================================================
-
-def test_drv():
-    wmtx = [
-        [1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 1.0],
-        [1.0, 2.0, 1.0, 2.0, 1.0, 1.0, 1.0],
-        [1.5, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0],
-        [1.5, 2.0, 1.2, 1.5, 1.0, 1.5, 1.0],
-        [1.5, 1.5, 1.2, 1.5, 1.2, 1.0, 1.0],
-        [2.0, 1.5, 1.0, 1.0, 1.1, 1.0, 1.0]]
-
-    e_wp_matrix = norm.sum([
-        [8.0, 8.0, 4.0, 2.0, 2.0, 2.0, 1.0],
-        [4.0, 4.0, 2.0, 2.0, 1.0, 1.0, 1.0],
-        [3.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0],
-        [8.1, 5.4, 2.7, 2.25, 1.5, 1.5, 1.0],
-        [4.86, 3.24, 2.16, 1.8, 1.2, 1.0, 1.0],
-        [3.3, 1.65, 1.1, 1.1, 1.1, 1.0, 1.0]], axis=1)
-
-    abc = [
-        # MO
-        np.array([
-            [2.5, 2.0, 1.0],
-            [0.5, 3.0, 1.0],
-            [2.5, 2.0, 1.0],
-            [1.0, 3.0, 1.0],
-            [1.0, 4.0, 1.0],
-            [6.0, 5.0, 1.0]]),
-
-        # COSTO
-        np.array([
-            [1.0, 1.0, 1.0],
-            [1.0, 1.0, 1.0],
-            [3.0, 2.5, 1.0],
-            [1.4, 1.3, 1.0],
-            [2.5, 2.0, 1.0],
-            [0.5, 0.5, 1.0]]),
-
-        # EXP
-        np.array([
-            [3.0, 2.5, 1.0],
-            [2.4, 1.2, 1.0],
-            [1.0, 1.0, 1.0],
-            [5.0, 4.0, 1.0],
-            [1.5, 2.0, 1.0],
-            [1.0, 1.0, 1.0]]),
-
-        # FLOTA
-        np.array([
-            [0.67, 3.0, 1.0],
-            [0.9, 2.1, 1.0],
-            [1.2, 4.0, 1.0],
-            [1.5, 2.0, 1.0],
-            [0.9, 4.4, 1.0],
-            [1.5, 2.0, 1.0]]),
-
-        # MEJ SERV
-        np.array([
-            [1.5, 2.0, 1.0],
-            [1.0, 2.0, 1.0],
-            [1.0, 3.0, 1.0],
-            [1.5, 3.0, 1.0],
-            [1.0, 3.0, 1.0],
-            [1.0, 3.0, 1.0]]),
-
-        # HyS
-        np.array([
-            [1.5, 4.0, 1.0],
-            [1.0, 3.0, 1.0],
-            [1.0, 3.0, 1.0],
-            [1.0, 3.0, 1.0],
-            [1.2, 4.0, 1.0],
-            [1.1, 3.0, 1.0]]),
-
-        # trat
-        np.array([
-            [2.0, 1.5, 1.0],
-            [1.0, 1.0, 1.0],
-            [3.0, 1.0, 1.0],
-            [2.0, 1.2, 1.0],
-            [4.0, 1.0, 1.0],
-            [1.5, 1.1, 1.0]])
-    ]
-
-    dec = DRVProcess()
-
-    result = dec.decide(weights=wmtx, abc=abc)
-    np.testing.assert_allclose(result.wnproducts, e_wp_matrix)
-    np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
-    np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
-    np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
-    np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
-    np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
-    return result
-
-
 # =============================================================================
 # MAIN
 # =============================================================================
 
 if __name__ == "__main__":
-    test_drv()
+    print(__doc__)

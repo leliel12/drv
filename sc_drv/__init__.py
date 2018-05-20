@@ -83,6 +83,7 @@ import os
 
 if os.getenv("SCDRV_IN_SETUP") != "True":
     from .method import *  # noqa
+    from .tests import run_tests  # noqa
 
 del os
 

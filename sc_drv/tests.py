@@ -56,7 +56,10 @@ group members.
 # IMPORTS
 # =============================================================================
 
+import sys
 import unittest
+
+import pytest
 
 import numpy as np
 
@@ -170,5 +173,8 @@ class DRVTestCase(unittest.TestCase):
 # MAIN
 # =============================================================================
 
+def run_tests():
+    return pytest.main(sys.argv)
+
 if __name__ == "__main__":
-    test_drv()
+    run_tests()

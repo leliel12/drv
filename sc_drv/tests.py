@@ -156,8 +156,8 @@ class DRVTestCase(unittest.TestCase):
                 [1.5, 1.1, 1.0]])
         ]
 
-    def test_drv(self):
-        dec = DRVProcess(njobs=1)
+    def test_drv_shapiro(self):
+        dec = DRVProcess(njobs=1, ntest="shapiro")
 
         result = dec.decide(weights=self.wmtx, abc=self.abc)
         np.testing.assert_allclose(result.wnproducts, self.e_wp_matrix)
@@ -166,7 +166,17 @@ class DRVTestCase(unittest.TestCase):
         np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
         np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
         np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
-        #~ return result
+
+    def test_drv_ks(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+
+        result = dec.decide(weights=self.wmtx, abc=self.abc)
+        np.testing.assert_allclose(result.wnproducts, self.e_wp_matrix)
+        np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
+        np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
+        np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
+        np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
+        np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
 
 
 # =============================================================================
@@ -174,7 +184,9 @@ class DRVTestCase(unittest.TestCase):
 # =============================================================================
 
 def run_tests():
+    """Execute all the tests"""
     return pytest.main(sys.argv)
+
 
 if __name__ == "__main__":
     run_tests()

@@ -58,8 +58,6 @@ group members.
 
 import numpy as np
 
-from scipy import stats
-
 import attr
 
 import joblib
@@ -76,8 +74,7 @@ from . import normtests
 
 NORMAL_TESTS = {
     "shapiro": normtests.shapiro,
-    "kstest": normtests.kstest,
-    "anderson": normtests.anderson,
+    "ks": normtests.kstest,
 }
 
 

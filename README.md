@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/leliel12/sc_drv.svg?branch=master)](https://travis-ci.org/leliel12/sc_drv)
 
-DRV processes developed on top of [Scikit-Criteria](http://scikit-criteria.org)
+DRV processes developed on top of [Scikit-Criteria](http://scikit-criteria.org).
 
 DRV processes have been developed to support Group Decision
 Making. They are applicable to the cases in which

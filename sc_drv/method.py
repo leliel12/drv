@@ -63,7 +63,7 @@ import attr
 
 import joblib
 
-from skcriteria import norm, Data
+from skcriteria import norm
 from skcriteria.madm import simple
 
 from . import normtests
@@ -218,6 +218,8 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
 
     results["aggregation_participants"] = agg_p
     results["aggregation_mean"] = agg_m
+
+    # stats
 
     return results
 

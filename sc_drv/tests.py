@@ -91,7 +91,7 @@ class DRVTestCase(unittest.TestCase):
             [4.86, 3.24, 2.16, 1.8, 1.2, 1.0, 1.0],
             [3.3, 1.65, 1.1, 1.1, 1.1, 1.0, 1.0]], axis=1)
 
-        self.abc = [
+        self.abc_nc = [
             # MO
             np.array([
                 [2.5, 2.0, 1.0],
@@ -156,22 +156,56 @@ class DRVTestCase(unittest.TestCase):
                 [1.5, 1.1, 1.0]])
         ]
 
-    def test_drv_shapiro(self):
+        self.abc_c = [
+            # MO
+            np.array([
+                [1.5, 3.0, 1.0],
+                [1.0, 3.0, 1.0],
+                [0.833, 3.6, 1.0],
+                [1.1, 2.5, 1.0],
+                [1.0, 3.0, 1.0],
+                [1.2, 3.0, 1.0]]),
+
+            # COSTO
+            np.array([
+                [1.1, 1.1, 1.0],
+                [1.2, 1.5, 1.0],
+                [1.1, 2.0, 1.0],
+                [1.1, 1.2, 1.0],
+                [1.2, 1.1, 1.0],
+                [1.1, 1.5, 1.0]]),
+
+            # EXP
+            np.array([
+                [1.1, 2.0, 1.0],
+                [1.0, 1.5, 1.0],
+                [1.1, 2.0, 1.0],
+                [2.1, 2.0, 1.0],
+                [1.5, 1.5, 1.0],
+                [1.2, 3.0, 1.0]]),
+
+         ] + self.abc_nc[3:]
+
+
+
+
+    def test_drv_shapiro_no_consensus(self):
         dec = DRVProcess(njobs=1, ntest="shapiro")
 
-        result = dec.decide(weights=self.wmtx, abc=self.abc)
-        np.testing.assert_allclose(result.wnproducts, self.e_wp_matrix)
+        result = dec.decide(weights=self.wmtx, abc=self.abc_nc)
+        np.testing.assert_allclose(
+            result.weights_participants, self.e_wp_matrix)
         np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
         np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
         np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
         np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
         np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
 
-    def test_drv_ks(self):
-        dec = DRVProcess(njobs=1, ntest="ks")
-
-        result = dec.decide(weights=self.wmtx, abc=self.abc)
-        np.testing.assert_allclose(result.wnproducts, self.e_wp_matrix)
+    def test_drv_shapiro_consensus(self):
+        dec = DRVProcess(njobs=1, ntest="shapiro")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        np.testing.assert_allclose(
+            result.weights_participants, self.e_wp_matrix)
         np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
         np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
         np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)

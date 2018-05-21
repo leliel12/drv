@@ -30,6 +30,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+
 # =============================================================================
 # FUTURE
 # =============================================================================
@@ -62,8 +63,8 @@ import attr
 
 import joblib
 
-from skcriteria import norm
-#~ from skcriteria.madm import
+from skcriteria import norm, Data
+from skcriteria.madm import simple
 
 from . import normtests
 
@@ -119,8 +120,13 @@ def subproblem(mtx, climit, ntest, ntest_kwargs):
             "resume": resume}
 
 
-def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
+def run_aggregator(idx, mtxs, criteria, weights, aggregator):
+    mtx = np.vstack(m[idx] for m in mtxs).T
+    weight = 1 if weights is None else weights[idx]
+    return aggregator.decide(mtx, criteria=criteria, weights=weight)
 
+
+def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
     # determine numbers of parallel jobs
     njobs = joblib.cpu_count() if njobs is None else njobs
 
@@ -134,7 +140,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
     # number of criteria
     J = len(abc)
 
-    # place to store the results
+    # placeholder to store the results
     results = {"N": N, "I": I, "J": J}
 
     # WEIGHTS
@@ -147,7 +153,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
 
     # copy weights results to the global results
     results.update({
-        "wnproducts": wresults.get("nproducts"),
+        "weights_participants": wresults.get("nproducts"),
         "wsctotal": wresults.get("sctotal"),
         "wssw": wresults.get("ssw"),
         "wssb": wresults.get("ssb"),
@@ -156,7 +162,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
         "wntest_sts": wresults.get("ntest_sts"),
         "wntest_pvals": wresults.get("ntest_pvals"),
         "win_consensus": wresults.get("in_consensus"),
-        "weights": wresults.get("resume")})
+        "weights_mean": wresults.get("resume")})
 
     # ALTERNATIVES
     with joblib.Parallel(n_jobs=njobs) as jobs:
@@ -168,7 +174,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
 
     # copy alt results to the global results
     results.update({
-        "anproducts": tuple(r["nproducts"] for r in wresults),
+        "mtx_participants": tuple(r["nproducts"] for r in wresults),
         "asctotal": np.hstack(r["sctotal"] for r in wresults),
         "assw": np.hstack(r["ssw"] for r in wresults),
         "assb": np.hstack(r["ssb"] for r in wresults),
@@ -177,7 +183,41 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
         "ain_consensus": np.hstack(r["in_consensus"] for r in wresults),
         "antest_sts": np.vstack(r["ntest_sts"] for r in wresults),
         "antest_pvals": np.vstack(r["ntest_pvals"] for r in wresults),
-        "aagg": np.vstack(r["resume"] for r in wresults)})
+        "mtx_mean": np.vstack(r["resume"] for r in wresults)})
+
+    # consensus
+    consensus = np.all(results["ain_consensus"])
+    if consensus and results["weights_mean"] is not None:
+        consensus = consensus and results["win_consensus"]
+    results["consensus"] = consensus
+
+    # aggregation
+    if consensus:
+        aggregator = simple.WeightedSum(mnorm="none", wnorm="none")
+
+        criteria = [max] * J
+
+        weights_mean = (
+            1 if results["weights_mean"] is None else results["weights_mean"])
+        agg_m = aggregator.decide(
+            results["mtx_mean"].T,
+            criteria=criteria, weights=weights_mean)
+
+        with joblib.Parallel(n_jobs=njobs) as jobs:
+            agg_p = jobs(
+                joblib.delayed(run_aggregator)(
+                    idx=idx,
+                    mtxs=results["mtx_participants"],
+                    criteria=criteria,
+                    weights=results["weights_participants"],
+                    aggregator=aggregator)
+                for idx in range(N))
+            agg_p = tuple(agg_p)
+    else:
+        agg_p, agg_m = None, None
+
+    results["aggregation_participants"] = agg_p
+    results["aggregation_mean"] = agg_m
 
     return results
 
@@ -196,39 +236,41 @@ class DRVResult(object):
     ntest_kwargs = attr.ib()
     climit = attr.ib()
 
-    wnproducts = attr.ib(repr=False)
+    weights_participants = attr.ib(repr=False)
     wsctotal = attr.ib(repr=False)
     wssw = attr.ib(repr=False)
     wssb = attr.ib(repr=False)
     wscu = attr.ib(repr=False)
     wivr = attr.ib(repr=False)
     win_consensus = attr.ib(repr=False)
-    weights = attr.ib(repr=False)
-    wntest_sts = attr.ib()
-    wntest_pvals = attr.ib()
+    weights_mean = attr.ib(repr=False)
+    wntest_sts = attr.ib(repr=False)
+    wntest_pvals = attr.ib(repr=False)
 
-    anproducts = attr.ib(repr=False)
+    mtx_participants = attr.ib(repr=False)
     asctotal = attr.ib(repr=False)
     assw = attr.ib(repr=False)
     assb = attr.ib(repr=False)
     ascu = attr.ib(repr=False)
     aivr = attr.ib(repr=False)
     ain_consensus = attr.ib(repr=False)
-    aagg = attr.ib(repr=False)
-    antest_sts = attr.ib()
-    antest_pvals = attr.ib()
+    mtx_mean = attr.ib(repr=False)
+    antest_sts = attr.ib(repr=False)
+    antest_pvals = attr.ib(repr=False)
 
-    data = attr.ib(repr=False)
+    consensus = attr.ib(repr=True)
+
+    aggregation_participants = attr.ib(repr=False)
+    aggregation_mean = attr.ib(repr=False)
 
 
 @attr.s(frozen=True)
 class DRVProcess(object):
 
-    climit = attr.ib(default=.25)
-    njobs = attr.ib(default=None)
-    ntest = attr.ib(default="shapiro")
-    ntest_kwargs = attr.ib(default=None)
-    #~ aggregator = attr.ib(default
+    climit: float = attr.ib(default=.25)
+    njobs: int = attr.ib(default=None)
+    ntest: str = attr.ib(default="shapiro")
+    ntest_kwargs: dict = attr.ib(default=None)
 
     @climit.validator
     def climit_check(self, attribute, value):
@@ -256,7 +298,7 @@ class DRVProcess(object):
         if value is not None and not isinstance(value, dict):
             raise ValueError("'ntest_kwargs' must be a dict or None")
 
-    def decide(self, weights, abc):
+    def decide(self, weights: np.ndarray, abc: list):
         # run the rdv
         drv_result = drv(
             weights, abc, ntest=self.ntest, ntest_kwargs=self.ntest_kwargs,
@@ -264,7 +306,7 @@ class DRVProcess(object):
 
         return DRVResult(
             climit=self.climit, ntest=self.ntest,
-            ntest_kwargs=self.ntest_kwargs, data=None, **drv_result)
+            ntest_kwargs=self.ntest_kwargs, **drv_result)
 
 
 # =============================================================================

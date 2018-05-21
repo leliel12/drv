@@ -84,10 +84,11 @@ NORMAL_TESTS = {
 
 
 # =============================================================================
-# FUNCTIONS
+# STRUCTURATION FUNCTIONS
 # =============================================================================
 
 def nproduct_indexes(nproducts, climit):
+    """Calculate the indexs of the products"""
     sctotal = np.sum((nproducts - np.mean(nproducts)) ** 2)
     ssw = np.sum((nproducts - np.mean(nproducts, axis=0)) ** 2)
     ssb = sctotal - ssw
@@ -104,6 +105,7 @@ def nproduct_indexes(nproducts, climit):
 
 
 def solve_nproducts(mtx):
+    """Create the product (normalized) matrix"""
     rmtx = np.flip(mtx, axis=1)
     rcumprod = np.cumprod(rmtx, axis=1)
     wproducts = np.flip(rcumprod, axis=1)
@@ -111,6 +113,7 @@ def solve_nproducts(mtx):
 
 
 def subproblem(mtx, climit, ntest, ntest_kwargs):
+    """Create and evaluate the product (normalized) matrix"""
     nproducts = solve_nproducts(mtx)
 
     sctotal, ssw, ssb, scu, ivr, inc, resume = nproduct_indexes(
@@ -124,19 +127,31 @@ def subproblem(mtx, climit, ntest, ntest_kwargs):
             "resume": resume}
 
 
+# =============================================================================
+# AGGREGATION STAGE
+# =============================================================================
+
 def run_aggregator(idx, mtxs, criteria, weights, aggregator):
+    """Helper to run the aggregator with joblib"""
     mtx = np.vstack(m[idx] for m in mtxs).T
     weight = 1 if weights is None else weights[idx]
     return aggregator.decide(mtx, criteria=criteria, weights=weight)
 
 
 def rank_ttest_rel(agg_p, aidx, bidx):
+    """Helper to run the t-test with joblib"""
     a_vals = np.array([r.e_.points[aidx] for r in agg_p])
     b_vals = np.array([r.e_.points[bidx] for r in agg_p])
     return stats.ttest_rel(a_vals, b_vals)
 
 
+# =============================================================================
+# DRV as FUNCTION
+# =============================================================================
+
 def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
+    # PREPROCESS
+
     # determine numbers of parallel jobs
     njobs = joblib.cpu_count() if njobs is None else njobs
 
@@ -195,13 +210,13 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
         "antest_pvals": np.vstack(r["ntest_pvals"] for r in wresults),
         "mtx_mean": np.vstack(r["resume"] for r in wresults)})
 
-    # consensus
+    # CONSENSUS
     consensus = np.all(results["ain_consensus"])
     if consensus and results["weights_mean"] is not None:
         consensus = consensus and results["win_consensus"]
-    results["consensus"] = consensus
+    results["consensus"] = consensus  # to global results
 
-    # aggregation
+    # AGGREGATION
     if consensus:
         aggregator = simple.WeightedSum(mnorm="none", wnorm="none")
 
@@ -237,6 +252,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
     else:
         agg_p, agg_m, rank_t, rank_p = None, None, None, None
 
+    # to global results
     results["aggregation_participants"] = agg_p
     results["aggregation_mean"] = agg_m
     results["rank_check_t"] = rank_t

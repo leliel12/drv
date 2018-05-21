@@ -57,7 +57,11 @@ group members.
 # IMPORTS
 # =============================================================================
 
+import itertools as it
+
 import numpy as np
+
+from scipy import stats
 
 import attr
 
@@ -124,6 +128,12 @@ def run_aggregator(idx, mtxs, criteria, weights, aggregator):
     mtx = np.vstack(m[idx] for m in mtxs).T
     weight = 1 if weights is None else weights[idx]
     return aggregator.decide(mtx, criteria=criteria, weights=weight)
+
+
+def rank_ttest_rel(agg_p, aidx, bidx):
+    a_vals = np.array([r.e_.points[aidx] for r in agg_p])
+    b_vals = np.array([r.e_.points[bidx] for r in agg_p])
+    return stats.ttest_rel(a_vals, b_vals)
 
 
 def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
@@ -213,13 +223,24 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
                     aggregator=aggregator)
                 for idx in range(N))
             agg_p = tuple(agg_p)
+
+            # rank verification
+            ttest_results = jobs(
+                joblib.delayed(rank_ttest_rel)(
+                    agg_p=agg_p, aidx=aidx, bidx=bidx)
+                for aidx, bidx in it.combinations(range(I), 2))
+
+            rank_t, rank_p = np.empty(I), np.empty(I)
+            for idx, r in enumerate(ttest_results):
+                rank_t[idx] = r.statistic
+                rank_p[idx] = r.pvalue
     else:
-        agg_p, agg_m = None, None
+        agg_p, agg_m, rank_t, rank_p = None, None, None, None
 
     results["aggregation_participants"] = agg_p
     results["aggregation_mean"] = agg_m
-
-    # stats
+    results["rank_check_t"] = rank_t
+    results["rank_check_pval"] = rank_p
 
     return results
 
@@ -264,6 +285,8 @@ class DRVResult(object):
 
     aggregation_participants = attr.ib(repr=False)
     aggregation_mean = attr.ib(repr=False)
+    rank_check_t = attr.ib(repr=False)
+    rank_check_pval = attr.ib(repr=False)
 
 
 @attr.s(frozen=True)

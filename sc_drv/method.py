@@ -42,14 +42,7 @@ from __future__ import unicode_literals
 # DOCS
 # =============================================================================
 
-__doc__ = """DRV processes have been developed to support Group Decision
-Making.
-
-They are applicable to the cases in which
-all members of the group operate in the same organization and, therefore,
-they must share organizational values, knowledge and preferences.
-Assumes that it is necessary to generate agreement on the preferences of
-group members.
+__doc__ = """DRV method implementation
 
 """
 
@@ -274,6 +267,7 @@ class DRVResult(object):
     ntest = attr.ib()
     ntest_kwargs = attr.ib()
     climit = attr.ib()
+    consensus = attr.ib()
 
     weights_participants = attr.ib(repr=False)
     wsctotal = attr.ib(repr=False)
@@ -297,8 +291,6 @@ class DRVResult(object):
     antest_sts = attr.ib(repr=False)
     antest_pvals = attr.ib(repr=False)
 
-    consensus = attr.ib(repr=True)
-
     aggregation_participants = attr.ib(repr=False)
     aggregation_mean = attr.ib(repr=False)
     rank_check_t = attr.ib(repr=False)
@@ -307,11 +299,54 @@ class DRVResult(object):
 
 @attr.s(frozen=True)
 class DRVProcess(object):
+    """DRV Processes (Decision with Reduction of Variability).
 
+    DRV processes have been developed to support Group Decision
+    Making. They are applicable to the cases in which
+    all members of the group operate in the same organization and, therefore,
+    they must share organizational values, knowledge and preferences.
+    Assumes that it is necessary to generate agreement on the preferences of
+    group members.
+
+    Parameters
+    ----------
+
+    climit : float, optional (default=.25)
+        Consensus limit. Maximum value of the IVR to asume that the solution
+        is stable.
+
+        The Stability is verified using the normality analysis of priorities
+        for each element of a subproblem, or by using the IVR
+        (Índice de Variabilidad Remanente, Remaining Variability Index)
+        IVR <= ``climit`` are indicative of stability.
+
+    ntest : 'shapiro' or 'ks' (default='shapiro')
+        Normaloty-test. Test to check if the priorities established by group
+        members must have a random behavior, represented by Normal
+        Distribution. The values must be 'shapiro' for the Shapito-Wilk test
+        [1]_ or 'ks' for the Kolmogorov-Smirnov test for goodness of fit. [2]_
+
+    ntest_kwargs : dict or None, optional (default=None)
+        Parameters to the normal test function.
+
+    njobs : int or None, optional (default=None)
+        The number of jobs to run in parallel.
+        If None, then the number of jobs is set to the number of cores.
+
+    References
+    ----------
+
+    .. [1] Shapiro, S. S. & Wilk, M.B (1965). An analysis of variance test for
+           normality (complete samples), Biometrika, Vol. 52, pp. 591-611.
+    .. [2] Daniel, Wayne W. (1990). "Kolmogorov–Smirnov one-sample test".
+           Applied Nonparametric Statistics (2nd ed.). Boston: PWS-Kent.
+           pp. 319–330. ISBN 0-534-91976-6.
+
+    """
     climit: float = attr.ib(default=.25)
-    njobs: int = attr.ib(default=None)
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
+    njobs: int = attr.ib(default=None)
 
     @climit.validator
     def climit_check(self, attribute, value):
@@ -339,7 +374,33 @@ class DRVProcess(object):
         if value is not None and not isinstance(value, dict):
             raise ValueError("'ntest_kwargs' must be a dict or None")
 
-    def decide(self, weights: np.ndarray, abc: list):
+    def decide(self, abc: list, weights: np.ndarray=None):
+        """Execute the DRV Processes.
+
+        Parameters
+        ----------
+
+        abc : list of 2D array-like
+            Alternative by criteria list. Every element of the list
+            is a 2D array where the element $A_{ij}$ of the matrix $k$
+            represent the valoration of the participant $i$ of the
+            alternative $j$ by the criteria $k$.
+
+        weights : 2D array-like or None (default=None)
+            Weight valoration matrix. Where the element $W_{ik} represent
+            the valoration of the participant $i$ of the weight of the
+            criterion $k$. If is None, all the criteria has the same
+            weight.
+
+        Returns
+        -------
+
+        result : DRVResult
+            Resume of the entire DRV process. If the problem not achieve a
+            consensus (`result.consensus == False`) the aggregation phase
+            are not executed.
+
+        """
         # run the rdv
         drv_result = drv(
             weights, abc, ntest=self.ntest, ntest_kwargs=self.ntest_kwargs,

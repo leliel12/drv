@@ -1,4 +1,5 @@
-# DRV Processes for Python
+# DRV Processes (Decision with Reduction of Variability).
+
 
 [![Build Status](https://travis-ci.org/leliel12/sc_drv.svg?branch=master)](https://travis-ci.org/leliel12/sc_drv)
 

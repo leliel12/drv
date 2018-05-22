@@ -30,25 +30,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# =============================================================================
-# FUTURE
-# =============================================================================
-
-from __future__ import unicode_literals
-
 
 # =============================================================================
 # DOCS
 # =============================================================================
 
-__doc__ = """DRV processes have been developed to support Group Decision
-Making.
-
-They are applicable to the cases in which
-all members of the group operate in the same organization and, therefore,
-they must share organizational values, knowledge and preferences.
-Assumes that it is necessary to generate agreement on the preferences of
-group members.
+"""DRV Processes tests
 
 """
 
@@ -62,6 +49,8 @@ import unittest
 import pytest
 
 import numpy as np
+
+from matplotlib import axes
 
 from skcriteria import norm
 
@@ -229,6 +218,57 @@ class DRVTestCase(unittest.TestCase):
         np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
         np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
         np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
+
+    def test_violin_plots(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        ptype = "violin"
+        self.assertIsInstance(
+            result.plot.weights_by_participants(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.weights_by_criteria(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_participants(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_alternatives(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_participants(1, ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_alternatives(1, ptype=ptype), axes.Axes)
+
+    def test_box_plots(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        ptype = "box"
+        self.assertIsInstance(
+            result.plot.weights_by_participants(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.weights_by_criteria(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_participants(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_alternatives(ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_participants(1, ptype=ptype), axes.Axes)
+        self.assertIsInstance(
+            result.plot.utilities_by_alternatives(1, ptype=ptype), axes.Axes)
+
+    def test_invalid_plots(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        ptype = "WRONG!"
+        with self.assertRaises(ValueError):
+            result.plot.weights_by_participants(ptype=ptype)
+        with self.assertRaises(ValueError):
+            result.plot.weights_by_criteria(ptype=ptype)
+        with self.assertRaises(ValueError):
+            result.plot.utilities_by_participants(ptype=ptype)
+        with self.assertRaises(ValueError):
+            result.plot.utilities_by_alternatives(ptype=ptype)
+        with self.assertRaises(ValueError):
+            result.plot.utilities_by_participants(1, ptype=ptype)
+        with self.assertRaises(ValueError):
+            result.plot.utilities_by_alternatives(1, ptype=ptype)
 
 
 # =============================================================================

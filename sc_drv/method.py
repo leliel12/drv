@@ -32,19 +32,15 @@
 
 
 # =============================================================================
-# FUTURE
-# =============================================================================
-
-from __future__ import unicode_literals
-
-
-# =============================================================================
 # DOCS
 # =============================================================================
 
-__doc__ = """DRV method implementation
+"""DRV method implementation
 
 """
+
+__all__ = ["DRVProcess"]
+
 
 # =============================================================================
 # IMPORTS
@@ -55,6 +51,8 @@ import itertools as it
 import numpy as np
 
 from scipy import stats
+
+from matplotlib import cm, pyplot as plt
 
 import attr
 
@@ -255,7 +253,92 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
 
 
 # =============================================================================
-# CLASSES
+# PLOT CLASSES
+# =============================================================================
+
+@attr.s(frozen=True)
+class PlotProxy(object):
+
+    data = attr.ib()
+
+    def _plot(self, mtx, ptype="violin", cmap=None, ax=None,
+              subplots_kwargs=None, plot_kwargs=None):
+
+        # create ax if necesary
+        if ax is None:
+            subplots_kwargs = subplots_kwargs or {}
+            ax = plt.subplots(**subplots_kwargs)[-1]
+
+        # plot creation
+        plot_kwargs = plot_kwargs or {}
+        if ptype == "violin":
+            key = "bodies"
+            plot = ax.violinplot(mtx, **plot_kwargs)
+        elif ptype == "box":
+            key = "boxes"
+            plot_kwargs.setdefault("notch", False)
+            plot_kwargs.setdefault("vert", True)
+            plot_kwargs.setdefault("patch_artist", True)
+            plot_kwargs.setdefault("sym", "o")
+            plot_kwargs.setdefault("flierprops", {'linestyle': 'none',
+                                                  'marker': 'o',
+                                                  'markerfacecolor': 'red'})
+            plot = ax.boxplot(mtx, **plot_kwargs)
+        else:
+            raise ValueError("ptype must be 'box' or 'violin'")
+
+        # colors in boxes
+        cmap = cm.get_cmap(name=cmap)
+        colors = cmap(np.linspace(0, 1, mtx.shape[1]))
+        for box, color in zip(plot[key], colors):
+            box.set_facecolor(color)
+        return ax
+
+    def weights_by_participants(self, **kwargs):
+        ax = self._plot(self.data.weights_participants.T, **kwargs)
+        ax.set_xlabel("Participants")
+        ax.set_ylabel("Weights")
+        ax.set_title("Weights by Participants")
+        return ax
+
+    def weights_by_criteria(self, **kwargs):
+        ax = self._plot(self.data.weights_participants, **kwargs)
+        ax.set_xlabel("Criteria")
+        ax.set_ylabel("Weights")
+        ax.set_title("Weights by Criteria")
+        return ax
+
+    def utilities_by_participants(self, criterion=None, **kwargs):
+        if criterion is None:
+            mtx = np.hstack(self.data.mtx_participants).T
+            title = "Utilities by Participants - ALL CRITERIA"
+        else:
+            mtx = self.data.mtx_participants[criterion].T
+            title = f"Utilities by Participants - Criterion: {criterion}"
+
+        ax = self._plot(mtx, **kwargs)
+        ax.set_xlabel("Participant")
+        ax.set_ylabel("Utilities")
+        ax.set_title(title)
+        return ax
+
+    def utilities_by_alternatives(self, criterion=None, **kwargs):
+        if criterion is None:
+            mtx = np.vstack(self.data.mtx_participants)
+            title = "Utilities by Alternatives - ALL CRITERIA"
+        else:
+            mtx = self.data.mtx_participants[criterion]
+            title = f"Utilities by Alternatives - Criterion: {criterion}"
+
+        ax = self._plot(mtx, **kwargs)
+        ax.set_xlabel("Alternatives")
+        ax.set_ylabel("Utilities")
+        ax.set_title(title)
+        return ax
+
+
+# =============================================================================
+# RESULT CLASS
 # =============================================================================
 
 @attr.s(frozen=True)
@@ -296,6 +379,15 @@ class DRVResult(object):
     rank_check_t = attr.ib(repr=False)
     rank_check_pval = attr.ib(repr=False)
 
+    plot = attr.ib(repr=False, init=False)
+
+    def __attrs_post_init__(self):
+        object.__setattr__(self, "plot", PlotProxy(self))
+
+
+# =============================================================================
+# API
+# =============================================================================
 
 @attr.s(frozen=True)
 class DRVProcess(object):
@@ -306,7 +398,7 @@ class DRVProcess(object):
     all members of the group operate in the same organization and, therefore,
     they must share organizational values, knowledge and preferences.
     Assumes that it is necessary to generate agreement on the preferences of
-    group members.
+    group members [1]_.
 
     Parameters
     ----------
@@ -324,7 +416,7 @@ class DRVProcess(object):
         Normaloty-test. Test to check if the priorities established by group
         members must have a random behavior, represented by Normal
         Distribution. The values must be 'shapiro' for the Shapito-Wilk test
-        [1]_ or 'ks' for the Kolmogorov-Smirnov test for goodness of fit. [2]_
+        [2]_ or 'ks' for the Kolmogorov-Smirnov test for goodness of fit. [3]_
 
     ntest_kwargs : dict or None, optional (default=None)
         Parameters to the normal test function.
@@ -336,9 +428,12 @@ class DRVProcess(object):
     References
     ----------
 
-    .. [1] Shapiro, S. S. & Wilk, M.B (1965). An analysis of variance test for
+    .. [1] Zanazzi, J. L., Gomes, L. F. A. M., & Dimitroff, M. (2014).
+           Group decision making applied to preventive maintenance systems.
+           Pesquisa Operacional, 34(1), 91-105.
+    .. [2] Shapiro, S. S. & Wilk, M.B (1965). An analysis of variance test for
            normality (complete samples), Biometrika, Vol. 52, pp. 591-611.
-    .. [2] Daniel, Wayne W. (1990). "Kolmogorov–Smirnov one-sample test".
+    .. [3] Daniel, Wayne W. (1990). "Kolmogorov–Smirnov one-sample test".
            Applied Nonparametric Statistics (2nd ed.). Boston: PWS-Kent.
            pp. 319–330. ISBN 0-534-91976-6.
 

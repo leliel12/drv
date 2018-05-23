@@ -52,8 +52,6 @@ import numpy as np
 
 from scipy import stats
 
-from matplotlib import cm, pyplot as plt
-
 import attr
 
 import joblib
@@ -61,7 +59,7 @@ import joblib
 from skcriteria import norm
 from skcriteria.madm import simple
 
-from . import normtests
+from . import normtests, plot
 
 
 # =============================================================================
@@ -253,91 +251,6 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
 
 
 # =============================================================================
-# PLOT CLASSES
-# =============================================================================
-
-@attr.s(frozen=True)
-class PlotProxy(object):
-
-    data = attr.ib()
-
-    def _plot(self, mtx, ptype="violin", cmap=None, ax=None,
-              subplots_kwargs=None, plot_kwargs=None):
-
-        # create ax if necesary
-        if ax is None:
-            subplots_kwargs = subplots_kwargs or {}
-            ax = plt.subplots(**subplots_kwargs)[-1]
-
-        # plot creation
-        plot_kwargs = plot_kwargs or {}
-        if ptype == "violin":
-            key = "bodies"
-            plot = ax.violinplot(mtx, **plot_kwargs)
-        elif ptype == "box":
-            key = "boxes"
-            plot_kwargs.setdefault("notch", False)
-            plot_kwargs.setdefault("vert", True)
-            plot_kwargs.setdefault("patch_artist", True)
-            plot_kwargs.setdefault("sym", "o")
-            plot_kwargs.setdefault("flierprops", {'linestyle': 'none',
-                                                  'marker': 'o',
-                                                  'markerfacecolor': 'red'})
-            plot = ax.boxplot(mtx, **plot_kwargs)
-        else:
-            raise ValueError("ptype must be 'box' or 'violin'")
-
-        # colors in boxes
-        cmap = cm.get_cmap(name=cmap)
-        colors = cmap(np.linspace(0, 1, mtx.shape[1]))
-        for box, color in zip(plot[key], colors):
-            box.set_facecolor(color)
-        return ax
-
-    def weights_by_participants(self, **kwargs):
-        ax = self._plot(self.data.weights_participants.T, **kwargs)
-        ax.set_xlabel("Participants")
-        ax.set_ylabel("Weights")
-        ax.set_title("Weights by Participants")
-        return ax
-
-    def weights_by_criteria(self, **kwargs):
-        ax = self._plot(self.data.weights_participants, **kwargs)
-        ax.set_xlabel("Criteria")
-        ax.set_ylabel("Weights")
-        ax.set_title("Weights by Criteria")
-        return ax
-
-    def utilities_by_participants(self, criterion=None, **kwargs):
-        if criterion is None:
-            mtx = np.hstack(self.data.mtx_participants).T
-            title = "Utilities by Participants - ALL CRITERIA"
-        else:
-            mtx = self.data.mtx_participants[criterion].T
-            title = f"Utilities by Participants - Criterion: {criterion}"
-
-        ax = self._plot(mtx, **kwargs)
-        ax.set_xlabel("Participant")
-        ax.set_ylabel("Utilities")
-        ax.set_title(title)
-        return ax
-
-    def utilities_by_alternatives(self, criterion=None, **kwargs):
-        if criterion is None:
-            mtx = np.vstack(self.data.mtx_participants)
-            title = "Utilities by Alternatives - ALL CRITERIA"
-        else:
-            mtx = self.data.mtx_participants[criterion]
-            title = f"Utilities by Alternatives - Criterion: {criterion}"
-
-        ax = self._plot(mtx, **kwargs)
-        ax.set_xlabel("Alternatives")
-        ax.set_ylabel("Utilities")
-        ax.set_title(title)
-        return ax
-
-
-# =============================================================================
 # RESULT CLASS
 # =============================================================================
 
@@ -382,7 +295,11 @@ class DRVResult(object):
     plot = attr.ib(repr=False, init=False)
 
     def __attrs_post_init__(self):
-        object.__setattr__(self, "plot", PlotProxy(self))
+        object.__setattr__(self, "plot", plot.PlotProxy(self))
+
+    @property
+    def has_weights(self):
+        return self.weights_mean is not None
 
 
 # =============================================================================

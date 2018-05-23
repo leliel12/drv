@@ -252,8 +252,10 @@ class DRVTestCase(unittest.TestCase):
             result.plot.utilities_by_participants(1, ptype=ptype), axes.Axes)
         self.assertIsInstance(
             result.plot.utilities_by_alternatives(1, ptype=ptype), axes.Axes)
+        self.assertIsInstance(result.plot.consensus(), axes.Axes)
+        self.assertIsInstance(result.plot.ivr(), axes.Axes)
 
-    def test_invalid_plots(self):
+    def test_invalid_violin_box_plots(self):
         dec = DRVProcess(njobs=1, ntest="ks")
         result = dec.decide(weights=self.wmtx, abc=self.abc_c)
         ptype = "WRONG!"

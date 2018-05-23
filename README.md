@@ -12,6 +12,11 @@ they must share organizational values, knowledge and preferences.
 Assumes that it is necessary to generate agreement on the preferences of
 group members.
 
+## Documentation
+
+- ~~[Instalation]()~~
+- [Tutorial](notebooks/tutorial.ipynb)
+
 ## Authors
 
 -   Juan B. Cabral ([IATE-OAC-CONICET](https://iate.oac.uncor.edu),

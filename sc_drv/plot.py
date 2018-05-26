@@ -50,6 +50,8 @@ from matplotlib import cm, pyplot as plt
 
 import attr
 
+from .libs import heatmap as plthmap
+
 
 # =============================================================================
 # FUNCTION
@@ -142,6 +144,29 @@ def bar(values, cmap=None, ax=None,
             return ax
 
 
+def annotated_heatmap(values, row_labels, col_labels, cbar_label, cmap=None,
+                      ax=None, subplots_kwargs=None, plot_kwargs=None):
+
+    # create ax if necesary
+    if ax is None:
+        subplots_kwargs = subplots_kwargs or {}
+        ax = plt.subplots(**subplots_kwargs)[-1]
+
+    plot_kwargs = plot_kwargs or {}
+    im, cbar = plthmap.heatmap(
+        data=values,
+        row_labels=row_labels,
+        col_labels=col_labels,
+        cbarlabel=cbar_label,
+        ax=ax, cmap=cmap,
+        **plot_kwargs)
+
+    plthmap.annotate_heatmap(im)
+    ax.get_figure().tight_layout()
+
+    return ax
+
+
 # =============================================================================
 # CLASSES
 # =============================================================================
@@ -152,28 +177,49 @@ class PlotError(ValueError):
 
 @attr.s(frozen=True)
 class PlotProxy(object):
+    """DRVResult plotting accessor and method
+
+    Examples
+    --------
+    >>> result.plot.consensus()
+    >>> df.plot.irv()
+
+    These plotting methods can also be accessed by calling the accessor as a
+    method with the ``kind`` argument:
+    ``result.plot(kind='irv')`` is equivalent to ``df.plot.irv()``
+
+    """
 
     data = attr.ib()
 
-    def __call__(self, plot="ivr", **kwargs):
-        func = getattr(self, plot)
+    def __call__(self, kind="ivr", **kwargs):
+        func = getattr(self, kind)
         return func(**kwargs)
 
     def ivr(self, **kwargs):
+        """Consensus level achieved by the subproblems as a barchart.
+
+        The subproblems with consensus are lower than the Consensus Limit
+        (climit).
+
+
+        """
         ivrs = self.data.aivr
         n_groups = len(ivrs)
-        labels = ["Alt. {}".format(idx) for idx in range(n_groups)]
+        labels = ["$j_{}$".format(idx) for idx in range(n_groups)]
 
         if self.data.has_weights:
             n_groups += 1
             ivrs = np.hstack([self.data.wivr, ivrs])
-            labels.insert(0, "Weight")
+            labels.insert(0, "$j_{W}$")
 
         ax = bar(ivrs, **kwargs)
         ax.axhline(self.data.climit)
 
         ax.set_ylabel('IVR')
         ax.set_title('IVR vs Consensus limit')
+
+        ax.set_xlabel("Subproblems")
         ax.set_xticks(range(n_groups))
         ax.set_xticklabels(labels)
 
@@ -185,6 +231,26 @@ class PlotProxy(object):
         return ax
 
     def consensus(self, **kwargs):
+        """Piechart with the proportion subproblem with and without consensus.
+
+        Parameters
+        ----------
+
+        explode: tuple of length 2, default: (0, 0.1)
+
+
+        cmap: str or None, default: None
+            Color map. If is None the default colormap is used.
+
+        ax: Axis
+
+        subplots_kwargs : dict or None
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.pie` function.
+
+        """
+
         total = float(len(self.data.ain_consensus))
         count = np.sum(self.data.ain_consensus)
 
@@ -203,47 +269,116 @@ class PlotProxy(object):
 
         return ax
 
+    def weight_heatmap(self, **kwargs):
+        """Create a heatmap matrix of the selected weight"""
+        if not self.data.has_weights:
+            raise PlotError("Data without weights")
+
+        row_labels = [
+            "$n_{}$".format(idx) for idx in range(self.data.N)]
+        col_labels = [
+            "$j_{}$".format(idx) for idx in range(self.data.J)]
+        data = self.data.weights_participants
+
+        ax = annotated_heatmap(
+            values=data, row_labels=row_labels, col_labels=col_labels,
+            cbar_label="Weights", **kwargs)
+
+        ax.set_ylabel("Participants")
+        ax.set_xlabel("Subproblems")
+        ax.set_title("Weights", y=1.15)
+
+        return ax
+
     def weights_by_participants(self, **kwargs):
+        """Distribution of weigths of criteria by participant.
+
+        """
         if not self.data.has_weights:
             raise PlotError("Data without weights")
         ax = box_violin_plot(self.data.weights_participants.T, **kwargs)
+
+        ax.set_xticks(np.arange(self.data.N) + 1)
+        ax.set_xticklabels([
+            "$n_{}$".format(idx) for idx in range(self.data.N)])
+
         ax.set_xlabel("Participants")
         ax.set_ylabel("Weights")
         ax.set_title("Weights by Participants")
         return ax
 
-    def weights_by_criteria(self, **kwargs):
+    def weights_by_subproblems(self, **kwargs):
+        """Distribution of weigths of criteria by subproblem.
+
+        """
         if not self.data.has_weights:
             raise PlotError("Data without weights")
         ax = box_violin_plot(self.data.weights_participants, **kwargs)
-        ax.set_xlabel("Criteria")
-        ax.set_ylabel("Weights")
+
+        ax.set_xticks(np.arange(self.data.J) + 1)
+        ax.set_xticklabels([
+            "$j_{}$".format(idx) for idx in range(self.data.J)])
+
+        ax.set_xlabel("Subproblem")
         ax.set_title("Weights by Criteria")
         return ax
 
-    def utilities_by_participants(self, criterion=None, **kwargs):
-        if criterion is None:
-            mtx = np.hstack(self.data.mtx_participants).T
-            title = "Utilities by Participants - ALL CRITERIA"
+    def utilities_heatmap(self, subproblem=None, **kwargs):
+        """Create a heatmap matrix of the selected weight"""
+        if subproblem is None:
+            data = np.add.reduce(self.data.mtx_participants)
+            title = "Utilities - ALL SUBPROBLEMS"
         else:
-            mtx = self.data.mtx_participants[criterion].T
-            title = f"Utilities by Participants - Criterion: {criterion}"
+            data = self.data.mtx_participants[subproblem]
+            title = f"Utilities - Subproblem: $J_{subproblem}$"
+
+        col_labels = [
+            "$i_{}$".format(idx) for idx in range(self.data.I)]
+        row_labels = [
+            "$n_{}$".format(idx) for idx in range(self.data.N)]
+
+        ax = annotated_heatmap(
+            values=data, row_labels=row_labels, col_labels=col_labels,
+            cbar_label="Utilities", **kwargs)
+
+        ax.set_ylabel("Participants")
+        ax.set_xlabel("Alternatives")
+        ax.set_title(title, y=1.15)
+        return ax
+
+    def utilities_by_participants(self, subproblem=None, **kwargs):
+        if subproblem is None:
+            mtx = np.hstack(self.data.mtx_participants).T
+            title = "Utilities by Participants - ALL SUBPROBLEMS"
+        else:
+            mtx = self.data.mtx_participants[subproblem].T
+            title = f"Utilities by Participants - Subproblem: $J_{subproblem}$"
 
         ax = box_violin_plot(mtx, **kwargs)
-        ax.set_xlabel("Participant")
+
+        ax.set_xticks(np.arange(self.data.N) + 1)
+        ax.set_xticklabels([
+            "$n_{}$".format(idx) for idx in range(self.data.N)])
+
+        ax.set_xlabel("Participants")
         ax.set_ylabel("Utilities")
         ax.set_title(title)
         return ax
 
-    def utilities_by_alternatives(self, criterion=None, **kwargs):
-        if criterion is None:
+    def utilities_by_alternatives(self, subproblem=None, **kwargs):
+        if subproblem is None:
             mtx = np.vstack(self.data.mtx_participants)
-            title = "Utilities by Alternatives - ALL CRITERIA"
+            title = "Utilities by Alternatives - ALL SUBPROBLEMS"
         else:
-            mtx = self.data.mtx_participants[criterion]
-            title = f"Utilities by Alternatives - Criterion: {criterion}"
+            mtx = self.data.mtx_participants[subproblem]
+            title = f"Utilities by Alternatives - Subproblem: $J_{subproblem}$"
 
         ax = box_violin_plot(mtx, **kwargs)
+
+        ax.set_xticks(np.arange(self.data.I) + 1)
+        ax.set_xticklabels([
+            "$i_{}$".format(idx) for idx in range(self.data.I)])
+
         ax.set_xlabel("Alternatives")
         ax.set_ylabel("Utilities")
         ax.set_title(title)

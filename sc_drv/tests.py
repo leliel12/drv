@@ -226,7 +226,7 @@ class DRVTestCase(unittest.TestCase):
         self.assertIsInstance(
             result.plot.weights_by_participants(ptype=ptype), axes.Axes)
         self.assertIsInstance(
-            result.plot.weights_by_criteria(ptype=ptype), axes.Axes)
+            result.plot.weights_by_subproblems(ptype=ptype), axes.Axes)
         self.assertIsInstance(
             result.plot.utilities_by_participants(ptype=ptype), axes.Axes)
         self.assertIsInstance(
@@ -243,7 +243,7 @@ class DRVTestCase(unittest.TestCase):
         self.assertIsInstance(
             result.plot.weights_by_participants(ptype=ptype), axes.Axes)
         self.assertIsInstance(
-            result.plot.weights_by_criteria(ptype=ptype), axes.Axes)
+            result.plot.weights_by_subproblems(ptype=ptype), axes.Axes)
         self.assertIsInstance(
             result.plot.utilities_by_participants(ptype=ptype), axes.Axes)
         self.assertIsInstance(
@@ -252,8 +252,23 @@ class DRVTestCase(unittest.TestCase):
             result.plot.utilities_by_participants(1, ptype=ptype), axes.Axes)
         self.assertIsInstance(
             result.plot.utilities_by_alternatives(1, ptype=ptype), axes.Axes)
+
+    def test_consensus_plot(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
         self.assertIsInstance(result.plot.consensus(), axes.Axes)
+
+    def test_ivr_plot(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
         self.assertIsInstance(result.plot.ivr(), axes.Axes)
+
+    def test_heatmap_plots(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        self.assertIsInstance(result.plot.weight_heatmap(), axes.Axes)
+        self.assertIsInstance(result.plot.utilities_heatmap(), axes.Axes)
+        self.assertIsInstance(result.plot.utilities_heatmap(1), axes.Axes)
 
     def test_invalid_violin_box_plots(self):
         dec = DRVProcess(njobs=1, ntest="ks")
@@ -262,7 +277,7 @@ class DRVTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             result.plot.weights_by_participants(ptype=ptype)
         with self.assertRaises(ValueError):
-            result.plot.weights_by_criteria(ptype=ptype)
+            result.plot.weights_by_subproblems(ptype=ptype)
         with self.assertRaises(ValueError):
             result.plot.utilities_by_participants(ptype=ptype)
         with self.assertRaises(ValueError):

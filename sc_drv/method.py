@@ -138,7 +138,7 @@ def rank_ttest_rel(agg_p, aidx, bidx):
 # DRV as FUNCTION
 # =============================================================================
 
-def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
+def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
     # PREPROCESS
 
     # determine numbers of parallel jobs
@@ -206,7 +206,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs):
     results["consensus"] = consensus  # to global results
 
     # AGGREGATION
-    if consensus:
+    if consensus or not agg_only_consensus:
         aggregator = simple.WeightedSum(mnorm="none", wnorm="none")
 
         criteria = [max] * J
@@ -342,6 +342,10 @@ class DRVProcess(object):
         The number of jobs to run in parallel.
         If None, then the number of jobs is set to the number of cores.
 
+    agg_only_consensus : bool, optional (default=True)
+        Calculate the aggregation only when a consensus is achieved.
+
+
     References
     ----------
 
@@ -359,6 +363,7 @@ class DRVProcess(object):
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
     njobs: int = attr.ib(default=None)
+    agg_only_consensus: bool = attr.ib(default=True)
 
     @climit.validator
     def climit_check(self, attribute, value):
@@ -416,7 +421,8 @@ class DRVProcess(object):
         # run the rdv
         drv_result = drv(
             weights, abc, ntest=self.ntest, ntest_kwargs=self.ntest_kwargs,
-            climit=self.climit, njobs=self.njobs)
+            climit=self.climit, njobs=self.njobs,
+            agg_only_consensus=self.agg_only_consensus)
 
         return DRVResult(
             climit=self.climit, ntest=self.ntest,

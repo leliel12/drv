@@ -81,16 +81,16 @@ def nproduct_indexes(nproducts, climit):
     sctotal = np.sum((nproducts - np.mean(nproducts)) ** 2)
     ssw = np.sum((nproducts - np.mean(nproducts, axis=0)) ** 2)
     ssb = sctotal - ssw
-    scu = (
+    ssu = (
         (nproducts.shape[0] - 1) /
         float(nproducts.shape[1] * 3))
 
-    ivr = ssw / scu
+    ivr = ssw / ssu
     inc = ivr <= climit
 
     resume = np.mean(nproducts, axis=0)
 
-    return sctotal, ssw, ssb, scu, ivr, inc, resume
+    return sctotal, ssw, ssb, ssu, ivr, inc, resume
 
 
 def solve_nproducts(mtx):
@@ -105,13 +105,13 @@ def subproblem(mtx, climit, ntest, ntest_kwargs):
     """Create and evaluate the product (normalized) matrix"""
     nproducts = solve_nproducts(mtx)
 
-    sctotal, ssw, ssb, scu, ivr, inc, resume = nproduct_indexes(
+    sctotal, ssw, ssb, ssu, ivr, inc, resume = nproduct_indexes(
         nproducts, climit)
 
     n_sts, pvals = ntest(nproducts, axis=1, **ntest_kwargs)
 
     return {"nproducts": nproducts, "sctotal": sctotal,
-            "ssw": ssw, "ssb": ssb, "ssu": scu, "ivr": ivr,
+            "ssw": ssw, "ssb": ssb, "ssu": ssu, "ivr": ivr,
             "in_consensus": inc, "ntest_sts": n_sts, "ntest_pvals": pvals,
             "resume": resume}
 
@@ -171,7 +171,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
         "wsctotal": wresults.get("sctotal"),
         "wssw": wresults.get("ssw"),
         "wssb": wresults.get("ssb"),
-        "wscu": wresults.get("ssu"),
+        "wssu": wresults.get("ssu"),
         "wivr": wresults.get("ivr"),
         "wntest_sts": wresults.get("ntest_sts"),
         "wntest_pvals": wresults.get("ntest_pvals"),
@@ -192,7 +192,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
         "asctotal": np.hstack(r["sctotal"] for r in wresults),
         "assw": np.hstack(r["ssw"] for r in wresults),
         "assb": np.hstack(r["ssb"] for r in wresults),
-        "ascu": np.hstack(r["ssu"] for r in wresults),
+        "assu": np.hstack(r["ssu"] for r in wresults),
         "aivr": np.hstack(r["ivr"] for r in wresults),
         "ain_consensus": np.hstack(r["in_consensus"] for r in wresults),
         "antest_sts": np.vstack(r["ntest_sts"] for r in wresults),
@@ -256,6 +256,99 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
 
 @attr.s(frozen=True)
 class DRVResult(object):
+    """Result set of the DRV method.
+
+    Parameters
+    ----------
+
+    N : int
+        Number of participants
+
+    I : int
+        Number of alternatives
+
+    J : int
+        Number of criteria.
+
+    ntest : str
+        Normality-test. Test to check if the priorities established by group
+        members must have a random behavior, represented by Normal
+        Distribution.
+
+    ntest_kwargs : dict or None
+        Parameters for the normal test function.
+
+    climit : float
+        Consensus limit. Maximum value of the IVR to asume that the solution
+        is stable.
+
+        The Stability is verified using the normality analysis of priorities
+        for each element of a sub-problem, or by using the IVR
+        (Índice de Variabilidad Remanente, Remaining Variability Index)
+        IVR <= ``climit`` are indicative of stability.
+
+    consensus_ : bool.
+        If all the sub-problems are in consensus. In other words if
+        every problem has ther IVR <= climit.
+
+    weights_mean_ : array or None
+        If the weight preference if provided, this attribute contains
+        a array where every i-nth element is mean of the weights asigned by
+        the participants to the in-th criteria.
+
+    weights_participants_ : array or None
+        If the weight preference if provided, this attribute contains
+        a 2D array where every row is a weight asigned by a single particpant.
+
+    wsctotal_ : float or None
+        Weights sub-problem Square Sum Total.
+        If the weight preference if provided, this attribute contains
+        the total sum of squares of the weight sub-problem. This value
+        is calculated as
+        `sum((weights_participants_ - mean(weights_participants_))**2))`.
+
+    wssw_ : float or None
+        Weights sub-problem Square-Sum Within
+        If the weight preference if provided, this attribute contains
+        the sum of squares within criteria of the weight sub-problem, and
+        represents the residual variability after a stage of analysis.
+        This value is calculated as
+        `sum((weights_participants_ - mean_by_row(weights_participants_))**2))`
+
+    wssb_ : float or None
+        Weights sub-problem Square-Sum Between
+        If the weight preference if provided, this attribute contains
+        the sum of squares between criteria of the weight sub-problem,
+        This value is calculated as `wsctotal_ - wssw_`.
+
+    wssu_ : float or None
+        Weights sub-problem Square-Sum of Uniform distribution.
+        Corresponds to the uniform distribution and reflects a situation of
+        complete disagreement within the group.
+
+    wivr_ : float or None
+        Weights sub-problem Índice de Variabilidad Remanente
+        (Translation: Remaining Variability Index).
+        If the weight preference if provided, this attribute contains
+        Is a ratio of agreement calculates as `wssw_ / wssu_`.
+
+    win_consensus_ : bool or None
+        Weights sub-problem In Consensus.
+        If the weight preference if provided, this attribute contains
+        the weights sub-problem is in consensus. I other words if all
+        the weight sub-problem `IVR <= climit`.
+
+    wntest_sts_ : ndarray or None
+        Weights Normal Test Statistics.
+        If the weight preference if provided, this attribute contains an array
+        Normality test statistic by criteria.
+
+    wntest_pvals_ : ndarray or None
+        Weights Normal Test P-value.
+        Normality test p-value by criteria.
+
+
+    """
 
     N = attr.ib()
     I = attr.ib()
@@ -263,34 +356,35 @@ class DRVResult(object):
     ntest = attr.ib()
     ntest_kwargs = attr.ib()
     climit = attr.ib()
-    consensus = attr.ib()
 
-    weights_participants = attr.ib(repr=False)
-    wsctotal = attr.ib(repr=False)
-    wssw = attr.ib(repr=False)
-    wssb = attr.ib(repr=False)
-    wscu = attr.ib(repr=False)
-    wivr = attr.ib(repr=False)
-    win_consensus = attr.ib(repr=False)
-    weights_mean = attr.ib(repr=False)
-    wntest_sts = attr.ib(repr=False)
-    wntest_pvals = attr.ib(repr=False)
+    consensus_ = attr.ib()
 
-    mtx_participants = attr.ib(repr=False)
-    asctotal = attr.ib(repr=False)
-    assw = attr.ib(repr=False)
-    assb = attr.ib(repr=False)
-    ascu = attr.ib(repr=False)
-    aivr = attr.ib(repr=False)
-    ain_consensus = attr.ib(repr=False)
-    mtx_mean = attr.ib(repr=False)
-    antest_sts = attr.ib(repr=False)
-    antest_pvals = attr.ib(repr=False)
+    weights_participants_ = attr.ib(repr=False)
+    wsctotal_ = attr.ib(repr=False)
+    wssw_ = attr.ib(repr=False)
+    wssb_ = attr.ib(repr=False)
+    wssu_ = attr.ib(repr=False)
+    wivr_ = attr.ib(repr=False)
+    win_consensus_ = attr.ib(repr=False)
+    weights_mean_ = attr.ib(repr=False)
+    wntest_sts_ = attr.ib(repr=False)
+    wntest_pvals_ = attr.ib(repr=False)
 
-    aggregation_participants = attr.ib(repr=False)
-    aggregation_mean = attr.ib(repr=False)
-    rank_check_t = attr.ib(repr=False)
-    rank_check_pval = attr.ib(repr=False)
+    mtx_participants_ = attr.ib(repr=False)
+    asctotal_ = attr.ib(repr=False)
+    assw_ = attr.ib(repr=False)
+    assb_ = attr.ib(repr=False)
+    assu_ = attr.ib(repr=False)
+    aivr_ = attr.ib(repr=False)
+    ain_consensus_ = attr.ib(repr=False)
+    mtx_mean_ = attr.ib(repr=False)
+    antest_sts_ = attr.ib(repr=False)
+    antest_pvals_ = attr.ib(repr=False)
+
+    aggregation_participants_ = attr.ib(repr=False)
+    aggregation_mean_ = attr.ib(repr=False)
+    rank_check_t_ = attr.ib(repr=False)
+    rank_check_pval_ = attr.ib(repr=False)
 
     plot = attr.ib(repr=False, init=False)
 
@@ -299,7 +393,17 @@ class DRVResult(object):
 
     @property
     def has_weights(self):
+        """True if the weight preference if provided so all the
+        weight sub-problem attributes are available; otherwise the attributes
+        are setted to None
+
+        """
         return self.weights_mean is not None
+
+    @property
+    def data(self):
+        if self.aggregation_mean is not None:
+            return self.aggregation_mean.data
 
 
 # =============================================================================
@@ -330,7 +434,7 @@ class DRVProcess(object):
         IVR <= ``climit`` are indicative of stability.
 
     ntest : 'shapiro' or 'ks' (default='shapiro')
-        Normaloty-test. Test to check if the priorities established by group
+        Normality-test. Test to check if the priorities established by group
         members must have a random behavior, represented by Normal
         Distribution. The values must be 'shapiro' for the Shapito-Wilk test
         [2]_ or 'ks' for the Kolmogorov-Smirnov test for goodness of fit. [3]_
@@ -391,7 +495,7 @@ class DRVProcess(object):
         if value is not None and not isinstance(value, dict):
             raise ValueError("'ntest_kwargs' must be a dict or None")
 
-    def decide(self, abc: list, weights: np.ndarray=None):
+    def decide(self, abc: list, weights: np.ndarray=None) -> DRVResult:
         """Execute the DRV Processes.
 
         Parameters

@@ -50,7 +50,7 @@ import pytest
 
 import numpy as np
 
-from matplotlib import axes
+from matplotlib import axes, pyplot as plt
 
 from skcriteria import norm
 
@@ -173,6 +173,9 @@ class DRVTestCase(unittest.TestCase):
                 [1.5, 1.5, 1.0],
                 [1.2, 3.0, 1.0]])] + self.abc_nc[3:]
 
+    def tearDown(self):
+        plt.close()
+
     def test_drv_shapiro_no_consensus(self):
         dec = DRVProcess(njobs=1, ntest="shapiro")
 
@@ -188,6 +191,7 @@ class DRVTestCase(unittest.TestCase):
     def test_drv_shapiro_consensus(self):
         dec = DRVProcess(njobs=1, ntest="shapiro")
         result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        import ipdb; ipdb.set_trace()
         np.testing.assert_allclose(
             result.weights_participants, self.e_wp_matrix)
         np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)

@@ -98,14 +98,14 @@ def solve_nproducts(mtx):
     return norm.sum(wproducts, axis=1)
 
 
-def subproblem(mtx, climit, ntest, ntest_kwargs, alpha):
+def subproblem(mtx, climit, ntest, ntest_kwargs, alpha_norm):
     """Create and evaluate the product (normalized) matrix"""
     nproducts = solve_nproducts(mtx)
 
     sst, ssw, ssb, ssu, ivr, inc, resume = nproduct_indexes(nproducts, climit)
 
     n_sts, pvals = ntest(nproducts, axis=1, **ntest_kwargs)
-    n_reject_h0 = pvals <= alpha
+    n_reject_h0 = pvals <= alpha_norm
 
     return {
         "nproducts": nproducts,
@@ -146,7 +146,7 @@ def rank_ttest_rel(agg_p, aidx, bidx):
 
 
 def drv(
-    weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consensus
+    weights, abc, climit, ntest, ntest_kwargs, alpha_norm, njobs, agg_only_consensus
 ):
     # PREPROCESS
 
@@ -171,7 +171,7 @@ def drv(
         wresults = subproblem(
             mtx=weights,
             climit=climit,
-            alpha=alpha,
+            alpha_norm=alpha_norm,
             ntest=ntest,
             ntest_kwargs=ntest_kwargs)
     else:
@@ -197,7 +197,7 @@ def drv(
             joblib.delayed(subproblem)(
                 amtx,
                 climit=climit,
-                alpha=alpha,
+                alpha_norm=alpha_norm,
                 ntest=ntest,
                 ntest_kwargs=ntest_kwargs)
             for amtx in abc)
@@ -236,11 +236,10 @@ def drv(
         criteria = [max] * J
 
         weights_mean = (
-            1 if results["weights_mean_"] is None else results["weights_mean_"]
-        )
+            1 if results["weights_mean_"] is None else
+            results["weights_mean_"])
         agg_m = aggregator.decide(
-            results["amtx_mean_"].T, criteria=criteria, weights=weights_mean
-        )
+            results["amtx_mean_"].T, criteria=criteria, weights=weights_mean)
 
         with joblib.Parallel(n_jobs=njobs) as jobs:
             agg_p = jobs(
@@ -249,19 +248,15 @@ def drv(
                     mtxs=results["amtx_criteria_"],
                     criteria=criteria,
                     weights=results["wmtx_"],
-                    aggregator=aggregator,
-                )
-                for idx in range(N)
-            )
+                    aggregator=aggregator)
+                for idx in range(N))
             agg_p = tuple(agg_p)
 
             # rank verification
             ttest_results = jobs(
                 joblib.delayed(rank_ttest_rel)(
-                    agg_p=agg_p, aidx=aidx, bidx=bidx
-                )
-                for aidx, bidx in it.combinations(range(I), 2)
-            )
+                    agg_p=agg_p, aidx=aidx, bidx=bidx)
+                for aidx, bidx in it.combinations(range(I), 2))
 
             rank_t, rank_p = np.empty(I), np.empty(I)
             for idx, r in enumerate(ttest_results):
@@ -299,8 +294,8 @@ class DRVResult(object):
     ntest_kwargs : dict or None
         Parameters for the normal test function.
 
-    alpha : float
-        significance. If the any p-value of n-test is less than `alpha`, we
+    alpha_norm : float
+        significance. If the any p-value of n-test is less than `alpha_norm`, we
         reject the null hypothesis of the normality tests.
 
     climit : float
@@ -457,16 +452,26 @@ class DRVResult(object):
         rejected.
 
     aggregation_criteria_ : tuple
-    aggregation_mean_ : skcriteria.madm.Decision
-    rank_check_t_ : array or None
-    rank_check_pval_ : array or None
 
+
+    aggregation_mean_ : skcriteria.madm.Decision
+
+
+    rank_check_t_ : array or None
+        T-Test statistic of independence of the the points of the aggregation
+        function. In other words if some alternative A is different enough
+        to an alternative B.
+
+    rank_check_pval_ : array or None
+        T-Test P-Value statistic of independence of the the points of the
+        aggregation function. In other words if some alternative A is
+        different enough to an alternative B if the
 
     """
 
     ntest = attr.ib()
     ntest_kwargs = attr.ib()
-    alpha = attr.ib()
+    alpha_norm = attr.ib()
     climit = attr.ib()
 
     N_ = attr.ib()
@@ -563,8 +568,8 @@ class DRVProcess(object):
     ntest_kwargs : dict or None, optional (default=None)
         Parameters to the normal test function.
 
-    alpha : float, optional (default=0.01)
-        significance. If the any p-value of n-test is less than `alpha`, we
+    alpha_norm : float, optional (default=0.01)
+        significance. If the any p-value of n-test is less than `alpha_norm`, we
         reject the null hypothesis.
 
     njobs : int, optional (default=-1)
@@ -594,7 +599,7 @@ class DRVProcess(object):
     climit: float = attr.ib(default=.25)
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
-    alpha: float = attr.ib(default=0.01)
+    alpha_norm: float = attr.ib(default=0.01)
     njobs: int = attr.ib(default=-1)
     agg_only_consensus: bool = attr.ib(default=True)
 
@@ -605,12 +610,12 @@ class DRVProcess(object):
         elif value < 0 or value > 1:
             raise ValueError("'climit' has to be >= 0 and <= 1")
 
-    @alpha.validator
-    def alpha_check(self, attribute, value):
+    @alpha_norm.validator
+    def alpha_norm_check(self, attribute, value):
         if not isinstance(value, float):
-            raise ValueError("'alpha' value must be an instance of float")
+            raise ValueError("'alpha_norm' value must be an instance of float")
         elif value < 0 or value > 1:
-            raise ValueError("'alpha' has to be >= 0 and <= 1")
+            raise ValueError("'alpha_norm' has to be >= 0 and <= 1")
 
     @njobs.validator
     def njobs_check(self, attribute, value):
@@ -663,13 +668,13 @@ class DRVProcess(object):
             ntest_kwargs=self.ntest_kwargs,
             climit=self.climit,
             njobs=self.njobs,
-            alpha=self.alpha,
+            alpha_norm=self.alpha_norm,
             agg_only_consensus=self.agg_only_consensus)
 
         return DRVResult(
             climit=self.climit,
             ntest=self.ntest,
-            alpha=self.alpha,
+            alpha_norm=self.alpha_norm,
             ntest_kwargs=self.ntest_kwargs,
             **drv_result)
 

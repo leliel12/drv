@@ -212,7 +212,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
     reject_h0 = np.any(results["antest_reject_h0_"])
     if not reject_h0 and results["wntest_reject_h0_"] is not None:
         reject_h0 = reject_h0 or np.any(results["wntest_reject_h0_"])
-    results["reject_h0_"] = reject_h0
+    results["ntest_reject_h0_"] = reject_h0
 
 
     # AGGREGATION
@@ -373,7 +373,7 @@ class DRVResult(object):
     J_ = attr.ib()
 
     consensus_ = attr.ib()
-    reject_h0_ = attr.ib()
+    ntest_reject_h0_ = attr.ib()
 
     weights_participants_ = attr.ib(repr=False)
     wsctotal_ = attr.ib(repr=False)

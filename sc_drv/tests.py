@@ -178,7 +178,6 @@ class DRVTestCase(unittest.TestCase):
 
     def test_drv_shapiro_no_consensus(self):
         dec = DRVProcess(njobs=1, ntest="shapiro")
-
         result = dec.decide(weights=self.wmtx, abc=self.abc_nc)
         np.testing.assert_allclose(
             result.weights_participants_, self.e_wp_matrix)

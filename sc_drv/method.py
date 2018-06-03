@@ -101,7 +101,7 @@ def solve_nproducts(mtx):
     return norm.sum(wproducts, axis=1)
 
 
-def subproblem(mtx, climit, ntest, ntest_kwargs):
+def subproblem(mtx, climit, ntest, ntest_kwargs, alpha):
     """Create and evaluate the product (normalized) matrix"""
     nproducts = solve_nproducts(mtx)
 
@@ -109,11 +109,12 @@ def subproblem(mtx, climit, ntest, ntest_kwargs):
         nproducts, climit)
 
     n_sts, pvals = ntest(nproducts, axis=1, **ntest_kwargs)
+    n_reject_h0 = pvals <= alpha
 
     return {"nproducts": nproducts, "sctotal": sctotal,
             "ssw": ssw, "ssb": ssb, "ssu": ssu, "ivr": ivr,
             "in_consensus": inc, "ntest_sts": n_sts, "ntest_pvals": pvals,
-            "resume": resume}
+            "ntest_reject_h0": n_reject_h0, "resume": resume}
 
 
 # =============================================================================
@@ -138,7 +139,7 @@ def rank_ttest_rel(agg_p, aidx, bidx):
 # DRV as FUNCTION
 # =============================================================================
 
-def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
+def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consensus):
     # PREPROCESS
 
     # determine numbers of parallel jobs
@@ -160,7 +161,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
     # WEIGHTS
     if np.ndim(weights) > 1:
         wresults = subproblem(
-            mtx=weights, climit=climit,
+            mtx=weights, climit=climit, alpha=alpha,
             ntest=ntest, ntest_kwargs=ntest_kwargs)
     else:
         wresults = {}
@@ -175,6 +176,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
         "wivr_": wresults.get("ivr"),
         "wntest_sts_": wresults.get("ntest_sts"),
         "wntest_pvals_": wresults.get("ntest_pvals"),
+        "wntest_reject_h0_": wresults.get("ntest_reject_h0"),
         "win_consensus_": wresults.get("in_consensus"),
         "weights_mean_": wresults.get("resume")})
 
@@ -182,7 +184,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
     with joblib.Parallel(n_jobs=njobs) as jobs:
         wresults = jobs(
             joblib.delayed(subproblem)(
-                amtx, climit=climit,
+                amtx, climit=climit, alpha=alpha,
                 ntest=ntest, ntest_kwargs=ntest_kwargs)
             for amtx in abc)
 
@@ -197,6 +199,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
         "ain_consensus_": np.hstack(r["in_consensus"] for r in wresults),
         "antest_sts_": np.vstack(r["ntest_sts"] for r in wresults),
         "antest_pvals_": np.vstack(r["ntest_pvals"] for r in wresults),
+        "antest_reject_h0_": np.vstack(r["ntest_reject_h0"] for r in wresults),
         "mtx_mean_": np.vstack(r["resume"] for r in wresults)})
 
     # CONSENSUS
@@ -204,6 +207,13 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
     if consensus and results["weights_mean_"] is not None:
         consensus = consensus and results["win_consensus_"]
     results["consensus_"] = consensus  # to global results
+
+    # GLOBAL REJECT H0
+    reject_h0 = np.any(results["antest_reject_h0_"])
+    if not reject_h0 and results["wntest_reject_h0_"] is not None:
+        reject_h0 = reject_h0 or np.any(results["wntest_reject_h0_"])
+    results["reject_h0_"] = reject_h0
+
 
     # AGGREGATION
     if consensus or not agg_only_consensus:
@@ -355,6 +365,7 @@ class DRVResult(object):
 
     ntest = attr.ib()
     ntest_kwargs = attr.ib()
+    alpha = attr.ib()
     climit = attr.ib()
 
     N_ = attr.ib()
@@ -362,6 +373,7 @@ class DRVResult(object):
     J_ = attr.ib()
 
     consensus_ = attr.ib()
+    reject_h0_ = attr.ib()
 
     weights_participants_ = attr.ib(repr=False)
     wsctotal_ = attr.ib(repr=False)
@@ -373,6 +385,7 @@ class DRVResult(object):
     weights_mean_ = attr.ib(repr=False)
     wntest_sts_ = attr.ib(repr=False)
     wntest_pvals_ = attr.ib(repr=False)
+    wntest_reject_h0_ = attr.ib(repr=False)
 
     mtx_participants_ = attr.ib(repr=False)
     asctotal_ = attr.ib(repr=False)
@@ -384,6 +397,7 @@ class DRVResult(object):
     mtx_mean_ = attr.ib(repr=False)
     antest_sts_ = attr.ib(repr=False)
     antest_pvals_ = attr.ib(repr=False)
+    antest_reject_h0_ = attr.ib(repr=False)
 
     aggregation_participants_ = attr.ib(repr=False)
     aggregation_mean_ = attr.ib(repr=False)
@@ -446,6 +460,10 @@ class DRVProcess(object):
     ntest_kwargs : dict or None, optional (default=None)
         Parameters to the normal test function.
 
+    alpha : float, optional (default=0.01)
+        significance. If the any p-value of n-test is less than `alpha`, we
+        reject the null hypothesis.
+
     njobs : int or None, optional (default=None)
         The number of jobs to run in parallel.
         If None, then the number of jobs is set to the number of cores.
@@ -470,6 +488,7 @@ class DRVProcess(object):
     climit: float = attr.ib(default=.25)
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
+    alpha: float = attr.ib(default=0.01)
     njobs: int = attr.ib(default=None)
     agg_only_consensus: bool = attr.ib(default=True)
 
@@ -479,6 +498,13 @@ class DRVProcess(object):
             raise ValueError("'climit' value must be an instance of float")
         elif value < 0 or value > 1:
             raise ValueError("'climit' has to be >= 0 and <= 1")
+
+    @alpha.validator
+    def alpha_check(self, attribute, value):
+        if not isinstance(value, float):
+            raise ValueError("'alpha' value must be an instance of float")
+        elif value < 0 or value > 1:
+            raise ValueError("'alpha' has to be >= 0 and <= 1")
 
     @njobs.validator
     def njobs_check(self, attribute, value):
@@ -529,11 +555,11 @@ class DRVProcess(object):
         # run the rdv
         drv_result = drv(
             weights, abc, ntest=self.ntest, ntest_kwargs=self.ntest_kwargs,
-            climit=self.climit, njobs=self.njobs,
+            climit=self.climit, njobs=self.njobs, alpha=self.alpha,
             agg_only_consensus=self.agg_only_consensus)
 
         return DRVResult(
-            climit=self.climit, ntest=self.ntest,
+            climit=self.climit, ntest=self.ntest, alpha=self.alpha,
             ntest_kwargs=self.ntest_kwargs, **drv_result)
 
 

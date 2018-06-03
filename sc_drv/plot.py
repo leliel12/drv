@@ -202,6 +202,18 @@ class PlotProxy(object):
         The subproblems with consensus are lower than the Consensus Limit
         (climit).
 
+        Parameters
+        ----------
+
+        cmap: str or None, default: None
+            Color map. If is None the default colormap is used.
+
+        ax: Axis
+
+        subplots_kwargs : dict or None
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.bar` function.
 
         """
         ivrs = self.data.aivr_
@@ -236,21 +248,21 @@ class PlotProxy(object):
         Parameters
         ----------
 
-        explode: tuple of length 2, default: (0, 0.1)
+        explode: tuple of length 2, optional (default=(0, 0.1))
+            Separation between the slides.
 
-
-        cmap: str or None, default: None
+        cmap: str, optional (default: None)
             Color map. If is None the default colormap is used.
 
-        ax: Axis
+        ax: matplotlib axes object, default None.
 
         subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
 
         plot_kwargs : dict or None
             Parameters of the `maptplotlib.pyplot.pie` function.
 
         """
-
         total = float(len(self.data.ain_consensus_))
         count = np.sum(self.data.ain_consensus_)
 
@@ -270,7 +282,23 @@ class PlotProxy(object):
         return ax
 
     def weight_heatmap(self, **kwargs):
-        """Create a heatmap matrix of the selected weight"""
+        """Create a heat-map matrix of the selected weight.
+
+        Parameters
+        ----------
+
+        cmap: str, optional (default: None)
+            Color map. If is None the default colormap is used.
+
+        ax: matplotlib axes object, default None.
+
+        subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.imshow` function.
+
+        """
         if not self.data.has_weights_:
             raise PlotError("Data without weights")
 
@@ -293,6 +321,24 @@ class PlotProxy(object):
     def weights_by_participants(self, **kwargs):
         """Distribution of weigths of criteria by participant.
 
+        Parameters
+        ----------
+
+        ptype : {"box", "violin"}, optional (default="box")
+            The plot type.
+
+        cmap: str, optional (default: None)
+            Color map. If is None the default colormap is used.
+
+        ax: matplotlib axes object, default None.
+
+        subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.box` or
+            `maptplotlib.pyplot.violin` function.
+
         """
         if not self.data.has_weights_:
             raise PlotError("Data without weights")
@@ -310,6 +356,24 @@ class PlotProxy(object):
     def weights_by_subproblems(self, **kwargs):
         """Distribution of weigths of criteria by subproblem.
 
+        Parameters
+        ----------
+
+        ptype : {"box", "violin"}, optional (default="box")
+            The plot type.
+
+        cmap: str, optional (default: None)
+            Color map. If is None the default colormap is used.
+
+        ax: matplotlib axes object, default None.
+
+        subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.box` or
+            `maptplotlib.pyplot.violin` function.
+
         """
         if not self.data.has_weights_:
             raise PlotError("Data without weights")
@@ -324,7 +388,28 @@ class PlotProxy(object):
         return ax
 
     def utilities_heatmap(self, subproblem=None, **kwargs):
-        """Create a heatmap matrix of the selected weight"""
+        """Create a heatmap matrix of the selected utilities.
+
+        Parameters
+        ----------
+
+        subproblem : int or None.
+            If a subproblem number is provided only the utilities of
+            this subproblem is shown. Otherwise the utilities are added
+            toguether in a single plot.
+
+        cmap: str, optional (default: None)
+            Color map. If is None the default colormap is used.
+
+        ax: matplotlib axes object, default None.
+
+        subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.imshow` function.
+
+        """
         if subproblem is None:
             data = np.add.reduce(self.data.amtx_criteria_)
             title = "Utilities - ALL SUBPROBLEMS"
@@ -347,6 +432,32 @@ class PlotProxy(object):
         return ax
 
     def utilities_by_participants(self, subproblem=None, **kwargs):
+        """Distribution of selected utilities by participants.
+
+        Parameters
+        ----------
+
+        subproblem : int or None, optional (default=None)
+            If a subproblem number is provided only the utilities of
+            this subproblem is shown. Otherwise the utilities are added
+            toguether in a single plot.
+
+        ptype : {"box", "violin"}, optional (default="box")
+            The plot type.
+
+        cmap: str, optional (default: None)
+            Color map. If is None the default colormap is used.
+
+        ax: matplotlib axes object, default None.
+
+        subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.box` or
+            `maptplotlib.pyplot.violin` function.
+
+        """
         if subproblem is None:
             mtx = np.hstack(self.data.amtx_criteria_).T
             title = "Utilities by Participants - ALL SUBPROBLEMS"
@@ -366,6 +477,32 @@ class PlotProxy(object):
         return ax
 
     def utilities_by_alternatives(self, subproblem=None, **kwargs):
+        """Distribution of selected utilities by alternatives.
+
+        Parameters
+        ----------
+
+        subproblem : int or None, optional (default=None)
+            If a subproblem number is provided only the utilities of
+            this subproblem is shown. Otherwise the utilities are added
+            toguether in a single plot.
+
+        ptype : {"box", "violin"}, optional (default="box")
+            The plot type.
+
+        cmap: str, optional (default: None)
+            Color map. If is None the default colormap is used.
+
+        ax: matplotlib axes object, default None.
+
+        subplots_kwargs : dict or None
+            Parameters to the subplot function if no axis is provided.
+
+        plot_kwargs : dict or None
+            Parameters of the `maptplotlib.pyplot.box` or
+            `maptplotlib.pyplot.violin` function.
+
+        """
         if subproblem is None:
             mtx = np.vstack(self.data.amtx_criteria_)
             title = "Utilities by Alternatives - ALL SUBPROBLEMS"

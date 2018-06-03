@@ -464,9 +464,11 @@ class DRVProcess(object):
         significance. If the any p-value of n-test is less than `alpha`, we
         reject the null hypothesis.
 
-    njobs : int or None, optional (default=None)
+    njobs : int, optional (default=-1)
         The number of jobs to run in parallel.
-        If None, then the number of jobs is set to the number of cores.
+        If -1, then the number of jobs is set to the number of cores.
+        For more information check
+        `joblib <https://pythonhosted.org/joblib/>`_ documentation.
 
     agg_only_consensus : bool, optional (default=True)
         Calculate the aggregation only when a consensus is achieved.
@@ -489,7 +491,7 @@ class DRVProcess(object):
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
     alpha: float = attr.ib(default=0.01)
-    njobs: int = attr.ib(default=None)
+    njobs: int = attr.ib(default=-1)
     agg_only_consensus: bool = attr.ib(default=True)
 
     @climit.validator
@@ -508,10 +510,8 @@ class DRVProcess(object):
 
     @njobs.validator
     def njobs_check(self, attribute, value):
-        if value is None:
-            return
-        elif not isinstance(value, int) and value <= 0:
-            raise ValueError("'njobs' must be an integer > 0")
+        if not isinstance(value, int):
+            raise ValueError("'njobs' must be an integer")
 
     @ntest.validator
     def ntest_check(self, attribute, value):

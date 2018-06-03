@@ -155,7 +155,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
     J = len(abc)
 
     # placeholder to store the results
-    results = {"N": N, "I": I, "J": J}
+    results = {"N_": N, "I_": I, "J_": J}
 
     # WEIGHTS
     if np.ndim(weights) > 1:
@@ -167,16 +167,16 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
 
     # copy weights results to the global results
     results.update({
-        "weights_participants": wresults.get("nproducts"),
-        "wsctotal": wresults.get("sctotal"),
-        "wssw": wresults.get("ssw"),
-        "wssb": wresults.get("ssb"),
-        "wssu": wresults.get("ssu"),
-        "wivr": wresults.get("ivr"),
-        "wntest_sts": wresults.get("ntest_sts"),
-        "wntest_pvals": wresults.get("ntest_pvals"),
-        "win_consensus": wresults.get("in_consensus"),
-        "weights_mean": wresults.get("resume")})
+        "weights_participants_": wresults.get("nproducts"),
+        "wsctotal_": wresults.get("sctotal"),
+        "wssw_": wresults.get("ssw"),
+        "wssb_": wresults.get("ssb"),
+        "wssu_": wresults.get("ssu"),
+        "wivr_": wresults.get("ivr"),
+        "wntest_sts_": wresults.get("ntest_sts"),
+        "wntest_pvals_": wresults.get("ntest_pvals"),
+        "win_consensus_": wresults.get("in_consensus"),
+        "weights_mean_": wresults.get("resume")})
 
     # ALTERNATIVES
     with joblib.Parallel(n_jobs=njobs) as jobs:
@@ -188,22 +188,22 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
 
     # copy alt results to the global results
     results.update({
-        "mtx_participants": tuple(r["nproducts"] for r in wresults),
-        "asctotal": np.hstack(r["sctotal"] for r in wresults),
-        "assw": np.hstack(r["ssw"] for r in wresults),
-        "assb": np.hstack(r["ssb"] for r in wresults),
-        "assu": np.hstack(r["ssu"] for r in wresults),
-        "aivr": np.hstack(r["ivr"] for r in wresults),
-        "ain_consensus": np.hstack(r["in_consensus"] for r in wresults),
-        "antest_sts": np.vstack(r["ntest_sts"] for r in wresults),
-        "antest_pvals": np.vstack(r["ntest_pvals"] for r in wresults),
-        "mtx_mean": np.vstack(r["resume"] for r in wresults)})
+        "mtx_participants_": tuple(r["nproducts"] for r in wresults),
+        "asctotal_": np.hstack(r["sctotal"] for r in wresults),
+        "assw_": np.hstack(r["ssw"] for r in wresults),
+        "assb_": np.hstack(r["ssb"] for r in wresults),
+        "assu_": np.hstack(r["ssu"] for r in wresults),
+        "aivr_": np.hstack(r["ivr"] for r in wresults),
+        "ain_consensus_": np.hstack(r["in_consensus"] for r in wresults),
+        "antest_sts_": np.vstack(r["ntest_sts"] for r in wresults),
+        "antest_pvals_": np.vstack(r["ntest_pvals"] for r in wresults),
+        "mtx_mean_": np.vstack(r["resume"] for r in wresults)})
 
     # CONSENSUS
-    consensus = np.all(results["ain_consensus"])
-    if consensus and results["weights_mean"] is not None:
-        consensus = consensus and results["win_consensus"]
-    results["consensus"] = consensus  # to global results
+    consensus = np.all(results["ain_consensus_"])
+    if consensus and results["weights_mean_"] is not None:
+        consensus = consensus and results["win_consensus_"]
+    results["consensus_"] = consensus  # to global results
 
     # AGGREGATION
     if consensus or not agg_only_consensus:
@@ -212,18 +212,19 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
         criteria = [max] * J
 
         weights_mean = (
-            1 if results["weights_mean"] is None else results["weights_mean"])
+            1 if results["weights_mean_"] is None else
+            results["weights_mean_"])
         agg_m = aggregator.decide(
-            results["mtx_mean"].T,
+            results["mtx_mean_"].T,
             criteria=criteria, weights=weights_mean)
 
         with joblib.Parallel(n_jobs=njobs) as jobs:
             agg_p = jobs(
                 joblib.delayed(run_aggregator)(
                     idx=idx,
-                    mtxs=results["mtx_participants"],
+                    mtxs=results["mtx_participants_"],
                     criteria=criteria,
-                    weights=results["weights_participants"],
+                    weights=results["weights_participants_"],
                     aggregator=aggregator)
                 for idx in range(N))
             agg_p = tuple(agg_p)
@@ -242,10 +243,10 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, njobs, agg_only_consensus):
         agg_p, agg_m, rank_t, rank_p = None, None, None, None
 
     # to global results
-    results["aggregation_participants"] = agg_p
-    results["aggregation_mean"] = agg_m
-    results["rank_check_t"] = rank_t
-    results["rank_check_pval"] = rank_p
+    results["aggregation_participants_"] = agg_p
+    results["aggregation_mean_"] = agg_m
+    results["rank_check_t_"] = rank_t
+    results["rank_check_pval_"] = rank_p
 
     return results
 
@@ -260,15 +261,6 @@ class DRVResult(object):
 
     Parameters
     ----------
-
-    N : int
-        Number of participants
-
-    I : int
-        Number of alternatives
-
-    J : int
-        Number of criteria.
 
     ntest : str
         Normality-test. Test to check if the priorities established by group
@@ -286,6 +278,15 @@ class DRVResult(object):
         for each element of a sub-problem, or by using the IVR
         (Índice de Variabilidad Remanente, Remaining Variability Index)
         IVR <= ``climit`` are indicative of stability.
+
+    N_ : int
+        Number of participants
+
+    I_ : int
+        Number of alternatives
+
+    J_ : int
+        Number of criteria.
 
     consensus_ : bool.
         If all the sub-problems are in consensus. In other words if
@@ -341,21 +342,24 @@ class DRVResult(object):
     wntest_sts_ : ndarray or None
         Weights Normal Test Statistics.
         If the weight preference if provided, this attribute contains an array
-        Normality test statistic by criteria.
+        with the normality test statistic by criteria.
 
     wntest_pvals_ : ndarray or None
         Weights Normal Test P-value.
-        Normality test p-value by criteria.
-
+        If the weight preference if provided, this attribute contains an array
+        with the normality test Normality test p-value by criteria. This
+        values are useful if you have an small number of criteria to reinforce
+        the assumption normality.
 
     """
 
-    N = attr.ib()
-    I = attr.ib()
-    J = attr.ib()
     ntest = attr.ib()
     ntest_kwargs = attr.ib()
     climit = attr.ib()
+
+    N_ = attr.ib()
+    I_ = attr.ib()
+    J_ = attr.ib()
 
     consensus_ = attr.ib()
 
@@ -392,18 +396,18 @@ class DRVResult(object):
         object.__setattr__(self, "plot", plot.PlotProxy(self))
 
     @property
-    def has_weights(self):
+    def has_weights_(self):
         """True if the weight preference if provided so all the
         weight sub-problem attributes are available; otherwise the attributes
         are setted to None
 
         """
-        return self.weights_mean is not None
+        return self.weights_mean_ is not None
 
     @property
     def data(self):
-        if self.aggregation_mean is not None:
-            return self.aggregation_mean.data
+        if self.aggregation_mean_ is not None:
+            return self.aggregation_mean_.data
 
 
 # =============================================================================

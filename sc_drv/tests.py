@@ -181,47 +181,46 @@ class DRVTestCase(unittest.TestCase):
 
         result = dec.decide(weights=self.wmtx, abc=self.abc_nc)
         np.testing.assert_allclose(
-            result.weights_participants, self.e_wp_matrix)
-        np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
-        np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
-        np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
-        np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
-        np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
+            result.weights_participants_, self.e_wp_matrix)
+        np.testing.assert_allclose(result.wsctotal_, 0.3178, rtol=1e-03)
+        np.testing.assert_allclose(result.wssw_, 0.0345, rtol=1e-03)
+        np.testing.assert_allclose(result.wssb_, 0.2833, rtol=1e-03)
+        np.testing.assert_allclose(result.wssu_, 0.2381, rtol=1e-03)
+        np.testing.assert_allclose(result.wivr_, 0.145, rtol=1e-03)
 
     def test_drv_shapiro_consensus(self):
         dec = DRVProcess(njobs=1, ntest="shapiro")
         result = dec.decide(weights=self.wmtx, abc=self.abc_c)
-        import ipdb; ipdb.set_trace()
         np.testing.assert_allclose(
-            result.weights_participants, self.e_wp_matrix)
-        np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
-        np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
-        np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
-        np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
-        np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
+            result.weights_participants_, self.e_wp_matrix)
+        np.testing.assert_allclose(result.wsctotal_, 0.3178, rtol=1e-03)
+        np.testing.assert_allclose(result.wssw_, 0.0345, rtol=1e-03)
+        np.testing.assert_allclose(result.wssb_, 0.2833, rtol=1e-03)
+        np.testing.assert_allclose(result.wssu_, 0.2381, rtol=1e-03)
+        np.testing.assert_allclose(result.wivr_, 0.145, rtol=1e-03)
 
     def test_drv_ks_no_consensus(self):
         dec = DRVProcess(njobs=1, ntest="ks")
 
         result = dec.decide(weights=self.wmtx, abc=self.abc_nc)
         np.testing.assert_allclose(
-            result.weights_participants, self.e_wp_matrix)
-        np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
-        np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
-        np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
-        np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
-        np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
+            result.weights_participants_, self.e_wp_matrix)
+        np.testing.assert_allclose(result.wsctotal_, 0.3178, rtol=1e-03)
+        np.testing.assert_allclose(result.wssw_, 0.0345, rtol=1e-03)
+        np.testing.assert_allclose(result.wssb_, 0.2833, rtol=1e-03)
+        np.testing.assert_allclose(result.wssu_, 0.2381, rtol=1e-03)
+        np.testing.assert_allclose(result.wivr_, 0.145, rtol=1e-03)
 
     def test_drv_ks_consensus(self):
         dec = DRVProcess(njobs=1, ntest="ks")
         result = dec.decide(weights=self.wmtx, abc=self.abc_c)
         np.testing.assert_allclose(
-            result.weights_participants, self.e_wp_matrix)
-        np.testing.assert_allclose(result.wsctotal, 0.3178, rtol=1e-03)
-        np.testing.assert_allclose(result.wssw, 0.0345, rtol=1e-03)
-        np.testing.assert_allclose(result.wssb, 0.2833, rtol=1e-03)
-        np.testing.assert_allclose(result.wscu, 0.2381, rtol=1e-03)
-        np.testing.assert_allclose(result.wivr, 0.145, rtol=1e-03)
+            result.weights_participants_, self.e_wp_matrix)
+        np.testing.assert_allclose(result.wsctotal_, 0.3178, rtol=1e-03)
+        np.testing.assert_allclose(result.wssw_, 0.0345, rtol=1e-03)
+        np.testing.assert_allclose(result.wssb_, 0.2833, rtol=1e-03)
+        np.testing.assert_allclose(result.wssu_, 0.2381, rtol=1e-03)
+        np.testing.assert_allclose(result.wivr_, 0.145, rtol=1e-03)
 
     def test_violin_plots(self):
         dec = DRVProcess(njobs=1, ntest="ks")

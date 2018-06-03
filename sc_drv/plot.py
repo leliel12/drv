@@ -204,13 +204,13 @@ class PlotProxy(object):
 
 
         """
-        ivrs = self.data.aivr
+        ivrs = self.data.aivr_
         n_groups = len(ivrs)
         labels = ["$j_{}$".format(idx) for idx in range(n_groups)]
 
-        if self.data.has_weights:
+        if self.data.has_weights_:
             n_groups += 1
-            ivrs = np.hstack([self.data.wivr, ivrs])
+            ivrs = np.hstack([self.data.wivr_, ivrs])
             labels.insert(0, "$j_{W}$")
 
         ax = bar(ivrs, **kwargs)
@@ -251,12 +251,12 @@ class PlotProxy(object):
 
         """
 
-        total = float(len(self.data.ain_consensus))
-        count = np.sum(self.data.ain_consensus)
+        total = float(len(self.data.ain_consensus_))
+        count = np.sum(self.data.ain_consensus_)
 
-        if self.data.has_weights:
+        if self.data.has_weights_:
             total += 1
-            count += int(self.data.win_consensus)
+            count += int(self.data.win_consensus_)
 
         trues = count / total
         falses = 1 - trues
@@ -271,14 +271,14 @@ class PlotProxy(object):
 
     def weight_heatmap(self, **kwargs):
         """Create a heatmap matrix of the selected weight"""
-        if not self.data.has_weights:
+        if not self.data.has_weights_:
             raise PlotError("Data without weights")
 
         row_labels = [
-            "$n_{}$".format(idx) for idx in range(self.data.N)]
+            "$n_{}$".format(idx) for idx in range(self.data.N_)]
         col_labels = [
-            "$j_{}$".format(idx) for idx in range(self.data.J)]
-        data = self.data.weights_participants
+            "$j_{}$".format(idx) for idx in range(self.data.J_)]
+        data = self.data.weights_participants_
 
         ax = annotated_heatmap(
             values=data, row_labels=row_labels, col_labels=col_labels,
@@ -294,13 +294,13 @@ class PlotProxy(object):
         """Distribution of weigths of criteria by participant.
 
         """
-        if not self.data.has_weights:
+        if not self.data.has_weights_:
             raise PlotError("Data without weights")
-        ax = box_violin_plot(self.data.weights_participants.T, **kwargs)
+        ax = box_violin_plot(self.data.weights_participants_.T, **kwargs)
 
-        ax.set_xticks(np.arange(self.data.N) + 1)
+        ax.set_xticks(np.arange(self.data.N_) + 1)
         ax.set_xticklabels([
-            "$n_{}$".format(idx) for idx in range(self.data.N)])
+            "$n_{}$".format(idx) for idx in range(self.data.N_)])
 
         ax.set_xlabel("Participants")
         ax.set_ylabel("Weights")
@@ -311,13 +311,13 @@ class PlotProxy(object):
         """Distribution of weigths of criteria by subproblem.
 
         """
-        if not self.data.has_weights:
+        if not self.data.has_weights_:
             raise PlotError("Data without weights")
-        ax = box_violin_plot(self.data.weights_participants, **kwargs)
+        ax = box_violin_plot(self.data.weights_participants_, **kwargs)
 
-        ax.set_xticks(np.arange(self.data.J) + 1)
+        ax.set_xticks(np.arange(self.data.J_) + 1)
         ax.set_xticklabels([
-            "$j_{}$".format(idx) for idx in range(self.data.J)])
+            "$j_{}$".format(idx) for idx in range(self.data.J_)])
 
         ax.set_xlabel("Subproblem")
         ax.set_title("Weights by Criteria")
@@ -326,16 +326,16 @@ class PlotProxy(object):
     def utilities_heatmap(self, subproblem=None, **kwargs):
         """Create a heatmap matrix of the selected weight"""
         if subproblem is None:
-            data = np.add.reduce(self.data.mtx_participants)
+            data = np.add.reduce(self.data.mtx_participants_)
             title = "Utilities - ALL SUBPROBLEMS"
         else:
-            data = self.data.mtx_participants[subproblem]
+            data = self.data.mtx_participants_[subproblem]
             title = f"Utilities - Subproblem: $J_{subproblem}$"
 
         col_labels = [
-            "$i_{}$".format(idx) for idx in range(self.data.I)]
+            "$i_{}$".format(idx) for idx in range(self.data.I_)]
         row_labels = [
-            "$n_{}$".format(idx) for idx in range(self.data.N)]
+            "$n_{}$".format(idx) for idx in range(self.data.N_)]
 
         ax = annotated_heatmap(
             values=data, row_labels=row_labels, col_labels=col_labels,
@@ -348,17 +348,17 @@ class PlotProxy(object):
 
     def utilities_by_participants(self, subproblem=None, **kwargs):
         if subproblem is None:
-            mtx = np.hstack(self.data.mtx_participants).T
+            mtx = np.hstack(self.data.mtx_participants_).T
             title = "Utilities by Participants - ALL SUBPROBLEMS"
         else:
-            mtx = self.data.mtx_participants[subproblem].T
+            mtx = self.data.mtx_participants_[subproblem].T
             title = f"Utilities by Participants - Subproblem: $J_{subproblem}$"
 
         ax = box_violin_plot(mtx, **kwargs)
 
-        ax.set_xticks(np.arange(self.data.N) + 1)
+        ax.set_xticks(np.arange(self.data.N_) + 1)
         ax.set_xticklabels([
-            "$n_{}$".format(idx) for idx in range(self.data.N)])
+            "$n_{}$".format(idx) for idx in range(self.data.N_)])
 
         ax.set_xlabel("Participants")
         ax.set_ylabel("Utilities")
@@ -367,17 +367,17 @@ class PlotProxy(object):
 
     def utilities_by_alternatives(self, subproblem=None, **kwargs):
         if subproblem is None:
-            mtx = np.vstack(self.data.mtx_participants)
+            mtx = np.vstack(self.data.mtx_participants_)
             title = "Utilities by Alternatives - ALL SUBPROBLEMS"
         else:
-            mtx = self.data.mtx_participants[subproblem]
+            mtx = self.data.mtx_participants_[subproblem]
             title = f"Utilities by Alternatives - Subproblem: $J_{subproblem}$"
 
         ax = box_violin_plot(mtx, **kwargs)
 
-        ax.set_xticks(np.arange(self.data.I) + 1)
+        ax.set_xticks(np.arange(self.data.I_) + 1)
         ax.set_xticklabels([
-            "$i_{}$".format(idx) for idx in range(self.data.I)])
+            "$i_{}$".format(idx) for idx in range(self.data.I_)])
 
         ax.set_xlabel("Alternatives")
         ax.set_ylabel("Utilities")

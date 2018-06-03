@@ -56,7 +56,7 @@ import attr
 
 import joblib
 
-from skcriteria import norm
+from skcriteria import norm, rank
 from skcriteria.madm import simple
 
 from . import normtests, plot
@@ -140,13 +140,23 @@ def rank_ttest_rel(agg_p, aidx, bidx):
     return stats.ttest_rel(a_vals, b_vals)
 
 
+def fdr_by(alpha, pvals, I):
+    """False discovery rate of Benjamini-Yekutieli"""
+    L = I * (I - 1) / 2.
+    pvals_rank = rank.rankdata(pvals, reverse=True)
+    denom = 1 / np.arange(1, L + 1)
+    fdr = pvals_rank * alpha / denom
+    return fdr
+
+
 # =============================================================================
 # DRV as FUNCTION
 # =============================================================================
 
 
 def drv(
-    weights, abc, climit, ntest, ntest_kwargs, alpha_norm, njobs, agg_only_consensus
+    weights, abc, climit, ntest, ntest_kwargs,
+    alpha_norm, alpha_rank, njobs, agg_only_consensus
 ):
     # PREPROCESS
 
@@ -262,14 +272,27 @@ def drv(
             for idx, r in enumerate(ttest_results):
                 rank_t[idx] = r.statistic
                 rank_p[idx] = r.pvalue
+
+        rank_fdr = fdr_by(alpha=alpha_rank, pvals=rank_p, I=I)
+        rank_results = rank_p < rank_fdr
+        rank_results_resume = np.all(rank_results)
     else:
-        agg_p, agg_m, rank_t, rank_p = None, None, None, None
+        agg_p, agg_m = None, None
+        rank_t, rank_p, rank_fdr, rank_results = None, None, None, None
+        rank_results_resume = False
 
     # to global results
     results["aggregation_criteria_"] = agg_p
     results["aggregation_mean_"] = agg_m
+
     results["rank_check_t_"] = rank_t
     results["rank_check_pval_"] = rank_p
+    results["rank_check_fdr_"] = rank_fdr
+    results["rank_check_results_"] = rank_results
+    results["rank_check_results_resume_"] = rank_results_resume
+
+    results["strict_preference_"] = (
+        consensus and not reject_h0 and rank_results_resume)
 
     return results
 
@@ -295,8 +318,13 @@ class DRVResult(object):
         Parameters for the normal test function.
 
     alpha_norm : float
-        significance. If the any p-value of n-test is less than `alpha_norm`, we
-        reject the null hypothesis of the normality tests.
+        significance. If the any p-value of n-test is less than ``alpha_norm``,
+        we reject the null hypothesis of the normality tests.
+
+    alpha_rank : float
+        significance. If the any FDR Benjamini-Yekutieli of the
+        ``rank_check_pval_`` is less than ``alpha_rank``, we reject the null
+        hypothesis (two alternatives are not different enough).
 
     climit : float
         Consensus limit. Maximum value of the IVR to asume that the solution
@@ -305,7 +333,7 @@ class DRVResult(object):
         The Stability is verified using the normality analysis of priorities
         for each element of a sub-problem, or by using the IVR
         (Índice de Variabilidad Remanente, Remaining Variability Index)
-        IVR <= ``climit`` are indicative of stability.
+        ``IVR <= climit`` are indicative of stability.
 
     N_ : int
         Number of participants
@@ -316,12 +344,21 @@ class DRVResult(object):
     J_ : int
         Number of criteria.
 
+    strict_preference_ : bool
+        True if consensus_ and rank_check_results_resume_ are True and also
+        ntest_reject_h0_ is False.
+
     consensus_ : bool
         If all the sub-problems are in consensus. In other words if
         every problem has ther IVR <= climit.
 
     ntest_reject_h0_ : bool
-        True if any subproble reject one of their normality test H0 then this.
+        True if any sub-problem reject one of their normality test H0 then
+        this.
+
+    rank_check_results_resume_ : bool
+        True only if all values of rank_check_results_ are True. If
+        rank_check_results_ is None then rank_check_results_resume_ is False.
 
     weights_mean_ : array or None
         If the weight preference if provided, this attribute contains
@@ -338,7 +375,7 @@ class DRVResult(object):
         If the weight preference if provided, this attribute contains
         the total sum of squares of the weight sub-problem. This value
         is calculated as
-        `sum((wmtx_ - mean(wmtx_))**2))`.
+        ``sum((wmtx_ - mean(wmtx_))**2))``.
 
     wssw_ : float or None
         Weights sub-problem Square-Sum Within.
@@ -346,13 +383,13 @@ class DRVResult(object):
         the sum of squares within criteria of the weight sub-problem, and
         represents the residual variability after a stage of analysis.
         This value is calculated as
-        `sum((wmtx_ - mean_by_row(wmtx_))**2))`
+        ``sum((wmtx_ - mean_by_row(wmtx_))**2))``
 
     wssb_ : float or None
         Weights sub-problem Square-Sum Between.
         If the weight preference if provided, this attribute contains
         the sum of squares between criteria of the weight sub-problem,
-        This value is calculated as `wsst_ - wssw_`.
+        This value is calculated as ``wsst_ - wssw_``.
 
     wssu_ : float or None
         Weights sub-problem Square-Sum of Uniform distribution.
@@ -363,13 +400,13 @@ class DRVResult(object):
         Weights sub-problem Índice de Variabilidad Remanente
         (Translation: Remaining Variability Index).
         If the weight preference if provided, this attribute contains
-        Is a ratio of agreement calculates as `wssw_ / wssu_`.
+        Is a ratio of agreement calculates as ``wssw_ / wssu_``.
 
     win_consensus_ : bool or None
         Weights sub-problem In Consensus.
         If the weight preference if provided, this attribute contains
         the weights sub-problem is in consensus. In other words if all
-        the weight sub-problem `wivr_ <= climit`.
+        the weight sub-problem ``wivr_ <= climit``.
 
     wntest_sts_ : ndarray or None
         Weights Normal Test Statistics.
@@ -391,14 +428,14 @@ class DRVResult(object):
     amtx_criteria_ : tuple of arrays
         Alternatives matrix by criteria.
         A tuple where the j-nth element is a 2D array of preference of
-        the `I_` alternatives by the criteria j.
+        the ``I_`` alternatives by the criteria j.
 
     asst_ : array
         Alternatives by criteria sub-problems Square-Sum Within.
         Array where the j-nth element is the total sum of squares of the
         evaluation of the alternatives by the criteria j.
         Every element on this array  is calculated as
-        `sum((amtx_criteria_[j] - mean(amtx_criteria_[j]))**2))`.
+        ``sum((amtx_criteria_[j] - mean(amtx_criteria_[j]))**2))``.
 
     assw_ : array
         Alternatives by criteria  sub-problems Square-Sum Within.
@@ -406,13 +443,13 @@ class DRVResult(object):
         of the evaluation of the alternatives by the criteria j, and
         represents the residual variability after a stage of analysis.
         Every element on this array  is calculated as
-        `sum((amtx_criteria_[j] - mean_by_row(amtx_criteria_[j]))**2))`
+        ``sum((amtx_criteria_[j] - mean_by_row(amtx_criteria_[j]))**2))``
 
     assb_ : array
         Alternatives by criteria sub-problems Square-Sum Between.
         Array where the j-nth element is the total sum of squares between
         of the evaluation of the alternatives by the criteria j.
-        Every element on this array  is calculated as `asst_ - assw_`.
+        Every element on this array  is calculated as ``asst_ - assw_``.
 
     assu_ : array
         Alternatives by criteria  sub-problems Square-Sum of Uniform
@@ -423,13 +460,13 @@ class DRVResult(object):
         Alternatives by criteria sub-problems Índice de Variabilidad Remanente
         (Translation: Remaining Variability Index).
         Array where the j-nth element a ratio of agreement of the alternatives
-        by the criteria j. Is calculated as follows: `assw_ / assu_`.
+        by the criteria j. Is calculated as follows: ``assw_ / assu_``.
 
     ain_consensus_ : array
         Alternatives by criteria sub-problems In Consensus.
         Array where the j-nth element is True if the alternatives
         by the criteria j are in consensus. In other words if
-        `aivr_[j] <= climit`.
+        ``aivr_[j] <= climit``.
 
     amtx_mean_ : 2D array
         Alternative matrix.
@@ -452,10 +489,20 @@ class DRVResult(object):
         rejected.
 
     aggregation_criteria_ : tuple
-
+        Tuple where the j-nth element is the decision using the data of the
+        alternatives by the criteria j. (The matrix is ``amtx_criteria_[j]``,
+        the weight is ``wmtx_[j] ``, with maximize criteria.)
 
     aggregation_mean_ : skcriteria.madm.Decision
+        Decision using the data of the
+        alternatives by the means. (The matrix is ``amtx_mean_``,
+        the weight is ``weights_mean_ ``, with maximize criteria.).
 
+        This is the real **result**, But is important to check:
+
+        - ``consensus_`` must be, True.
+        - ``ntest_reject_h0_`` must be False.
+        - ``rank_check_reject_h0_`` must be True.
 
     rank_check_t_ : array or None
         T-Test statistic of independence of the the points of the aggregation
@@ -464,22 +511,32 @@ class DRVResult(object):
 
     rank_check_pval_ : array or None
         T-Test P-Value statistic of independence of the the points of the
-        aggregation function. In other words if some alternative A is
-        different enough to an alternative B if the
+        aggregation function.
+
+    rank_check_fdr_ : array or None
+        Value Benjamini-Yekutieli FDR using the ``alpha_rank`` value.
+
+    rank_check_results_ : array or None
+        ``rank_check_pval_ < rank_check_fdr_``. True if the rank is affected
+        by the sampling.
 
     """
 
     ntest = attr.ib()
     ntest_kwargs = attr.ib()
     alpha_norm = attr.ib()
+    alpha_rank = attr.ib()
     climit = attr.ib()
 
     N_ = attr.ib()
     I_ = attr.ib()
     J_ = attr.ib()
 
-    consensus_ = attr.ib()
-    ntest_reject_h0_ = attr.ib()
+    strict_preference_ = attr.ib()
+
+    consensus_ = attr.ib(repr=False)
+    ntest_reject_h0_ = attr.ib(repr=False)
+    rank_check_results_resume_ = attr.ib(repr=False)
 
     wmtx_ = attr.ib(repr=False)
     wsst_ = attr.ib(repr=False)
@@ -507,8 +564,11 @@ class DRVResult(object):
 
     aggregation_criteria_ = attr.ib(repr=False)
     aggregation_mean_ = attr.ib(repr=False)
+
     rank_check_t_ = attr.ib(repr=False)
     rank_check_pval_ = attr.ib(repr=False)
+    rank_check_fdr_ = attr.ib(repr=False)
+    rank_check_results_ = attr.ib(repr=False)
 
     plot = attr.ib(repr=False, init=False)
 
@@ -557,7 +617,7 @@ class DRVProcess(object):
         The Stability is verified using the normality analysis of priorities
         for each element of a subproblem, or by using the IVR
         (Índice de Variabilidad Remanente, Remaining Variability Index)
-        IVR <= ``climit`` are indicative of stability.
+        ``IVR <= climit`` are indicative of stability.
 
     ntest : 'shapiro' or 'ks' (default='shapiro')
         Normality-test. Test to check if the priorities established by group
@@ -569,14 +629,19 @@ class DRVProcess(object):
         Parameters to the normal test function.
 
     alpha_norm : float, optional (default=0.01)
-        significance. If the any p-value of n-test is less than `alpha_norm`, we
-        reject the null hypothesis.
+        significance. If the any p-value of n-test is less than ``alpha_norm``,
+        we reject the null hypothesis.
+
+    alpha_rank : float, optional (default=0.05)
+        significance. If the any FDR Benjamini-Yekutieli of the
+        rank_check_pval_ is less than ``alpha_rank``, we reject the null
+        hypothesis (two alternatives are not different enough).
 
     njobs : int, optional (default=-1)
         The number of jobs to run in parallel.
         If -1, then the number of jobs is set to the number of cores.
         For more information check
-        `joblib <https://pythonhosted.org/joblib/>`_ documentation.
+        ``joblib <https://pythonhosted.org/joblib/>``_ documentation.
 
     agg_only_consensus : bool, optional (default=True)
         Calculate the aggregation only when a consensus is achieved.
@@ -600,6 +665,7 @@ class DRVProcess(object):
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
     alpha_norm: float = attr.ib(default=0.01)
+    alpha_rank: float = attr.ib(default=0.05)
     njobs: int = attr.ib(default=-1)
     agg_only_consensus: bool = attr.ib(default=True)
 
@@ -616,6 +682,13 @@ class DRVProcess(object):
             raise ValueError("'alpha_norm' value must be an instance of float")
         elif value < 0 or value > 1:
             raise ValueError("'alpha_norm' has to be >= 0 and <= 1")
+
+    @alpha_rank.validator
+    def alpha_rank_check(self, attribute, value):
+        if not isinstance(value, float):
+            raise ValueError("'alpha_rank' value must be an instance of float")
+        elif value < 0 or value > 1:
+            raise ValueError("'alpha_rank' has to be >= 0 and <= 1")
 
     @njobs.validator
     def njobs_check(self, attribute, value):
@@ -656,7 +729,7 @@ class DRVProcess(object):
 
         result : DRVResult
             Resume of the entire DRV process. If the problem not achieve a
-            consensus (`result.consensus == False`) the aggregation phase
+            consensus (``result.consensus == False``) the aggregation phase
             are not executed.
 
         """
@@ -669,12 +742,14 @@ class DRVProcess(object):
             climit=self.climit,
             njobs=self.njobs,
             alpha_norm=self.alpha_norm,
+            alpha_rank=self.alpha_rank,
             agg_only_consensus=self.agg_only_consensus)
 
         return DRVResult(
             climit=self.climit,
             ntest=self.ntest,
             alpha_norm=self.alpha_norm,
+            alpha_rank=self.alpha_rank,
             ntest_kwargs=self.ntest_kwargs,
             **drv_result)
 

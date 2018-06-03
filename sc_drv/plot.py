@@ -278,7 +278,7 @@ class PlotProxy(object):
             "$n_{}$".format(idx) for idx in range(self.data.N_)]
         col_labels = [
             "$j_{}$".format(idx) for idx in range(self.data.J_)]
-        data = self.data.weights_participants_
+        data = self.data.wmtx_
 
         ax = annotated_heatmap(
             values=data, row_labels=row_labels, col_labels=col_labels,
@@ -296,7 +296,7 @@ class PlotProxy(object):
         """
         if not self.data.has_weights_:
             raise PlotError("Data without weights")
-        ax = box_violin_plot(self.data.weights_participants_.T, **kwargs)
+        ax = box_violin_plot(self.data.wmtx_.T, **kwargs)
 
         ax.set_xticks(np.arange(self.data.N_) + 1)
         ax.set_xticklabels([
@@ -313,7 +313,7 @@ class PlotProxy(object):
         """
         if not self.data.has_weights_:
             raise PlotError("Data without weights")
-        ax = box_violin_plot(self.data.weights_participants_, **kwargs)
+        ax = box_violin_plot(self.data.wmtx_, **kwargs)
 
         ax.set_xticks(np.arange(self.data.J_) + 1)
         ax.set_xticklabels([
@@ -326,10 +326,10 @@ class PlotProxy(object):
     def utilities_heatmap(self, subproblem=None, **kwargs):
         """Create a heatmap matrix of the selected weight"""
         if subproblem is None:
-            data = np.add.reduce(self.data.mtx_participants_)
+            data = np.add.reduce(self.data.amtx_criteria_)
             title = "Utilities - ALL SUBPROBLEMS"
         else:
-            data = self.data.mtx_participants_[subproblem]
+            data = self.data.amtx_criteria_[subproblem]
             title = f"Utilities - Subproblem: $J_{subproblem}$"
 
         col_labels = [
@@ -348,10 +348,10 @@ class PlotProxy(object):
 
     def utilities_by_participants(self, subproblem=None, **kwargs):
         if subproblem is None:
-            mtx = np.hstack(self.data.mtx_participants_).T
+            mtx = np.hstack(self.data.amtx_criteria_).T
             title = "Utilities by Participants - ALL SUBPROBLEMS"
         else:
-            mtx = self.data.mtx_participants_[subproblem].T
+            mtx = self.data.amtx_criteria_[subproblem].T
             title = f"Utilities by Participants - Subproblem: $J_{subproblem}$"
 
         ax = box_violin_plot(mtx, **kwargs)
@@ -367,10 +367,10 @@ class PlotProxy(object):
 
     def utilities_by_alternatives(self, subproblem=None, **kwargs):
         if subproblem is None:
-            mtx = np.vstack(self.data.mtx_participants_)
+            mtx = np.vstack(self.data.amtx_criteria_)
             title = "Utilities by Alternatives - ALL SUBPROBLEMS"
         else:
-            mtx = self.data.mtx_participants_[subproblem]
+            mtx = self.data.amtx_criteria_[subproblem]
             title = f"Utilities by Alternatives - Subproblem: $J_{subproblem}$"
 
         ax = box_violin_plot(mtx, **kwargs)

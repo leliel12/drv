@@ -66,31 +66,28 @@ from . import normtests, plot
 # CONSTANTS
 # =============================================================================
 
-NORMAL_TESTS = {
-    "shapiro": normtests.shapiro,
-    "ks": normtests.kstest,
-}
+NORMAL_TESTS = {"shapiro": normtests.shapiro,
+                "ks": normtests.kstest}
 
 
 # =============================================================================
 # STRUCTURATION FUNCTIONS
 # =============================================================================
 
+
 def nproduct_indexes(nproducts, climit):
     """Calculate the indexs of the products"""
-    sctotal = np.sum((nproducts - np.mean(nproducts)) ** 2)
+    sst = np.sum((nproducts - np.mean(nproducts)) ** 2)
     ssw = np.sum((nproducts - np.mean(nproducts, axis=0)) ** 2)
-    ssb = sctotal - ssw
-    ssu = (
-        (nproducts.shape[0] - 1) /
-        float(nproducts.shape[1] * 3))
+    ssb = sst - ssw
+    ssu = (nproducts.shape[0] - 1) / float(nproducts.shape[1] * 3)
 
     ivr = ssw / ssu
     inc = ivr <= climit
 
     resume = np.mean(nproducts, axis=0)
 
-    return sctotal, ssw, ssb, ssu, ivr, inc, resume
+    return sst, ssw, ssb, ssu, ivr, inc, resume
 
 
 def solve_nproducts(mtx):
@@ -105,21 +102,29 @@ def subproblem(mtx, climit, ntest, ntest_kwargs, alpha):
     """Create and evaluate the product (normalized) matrix"""
     nproducts = solve_nproducts(mtx)
 
-    sctotal, ssw, ssb, ssu, ivr, inc, resume = nproduct_indexes(
-        nproducts, climit)
+    sst, ssw, ssb, ssu, ivr, inc, resume = nproduct_indexes(nproducts, climit)
 
     n_sts, pvals = ntest(nproducts, axis=1, **ntest_kwargs)
     n_reject_h0 = pvals <= alpha
 
-    return {"nproducts": nproducts, "sctotal": sctotal,
-            "ssw": ssw, "ssb": ssb, "ssu": ssu, "ivr": ivr,
-            "in_consensus": inc, "ntest_sts": n_sts, "ntest_pvals": pvals,
-            "ntest_reject_h0": n_reject_h0, "resume": resume}
+    return {
+        "nproducts": nproducts,
+        "sst": sst,
+        "ssw": ssw,
+        "ssb": ssb,
+        "ssu": ssu,
+        "ivr": ivr,
+        "in_consensus": inc,
+        "ntest_sts": n_sts,
+        "ntest_pvals": pvals,
+        "ntest_reject_h0": n_reject_h0,
+        "resume": resume}
 
 
 # =============================================================================
 # AGGREGATION STAGE
 # =============================================================================
+
 
 def run_aggregator(idx, mtxs, criteria, weights, aggregator):
     """Helper to run the aggregator with joblib"""
@@ -139,7 +144,10 @@ def rank_ttest_rel(agg_p, aidx, bidx):
 # DRV as FUNCTION
 # =============================================================================
 
-def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consensus):
+
+def drv(
+    weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consensus
+):
     # PREPROCESS
 
     # determine numbers of parallel jobs
@@ -161,15 +169,18 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
     # WEIGHTS
     if np.ndim(weights) > 1:
         wresults = subproblem(
-            mtx=weights, climit=climit, alpha=alpha,
-            ntest=ntest, ntest_kwargs=ntest_kwargs)
+            mtx=weights,
+            climit=climit,
+            alpha=alpha,
+            ntest=ntest,
+            ntest_kwargs=ntest_kwargs)
     else:
         wresults = {}
 
     # copy weights results to the global results
     results.update({
-        "weights_participants_": wresults.get("nproducts"),
-        "wsctotal_": wresults.get("sctotal"),
+        "wmtx_": wresults.get("nproducts"),
+        "wsst_": wresults.get("sst"),
         "wssw_": wresults.get("ssw"),
         "wssb_": wresults.get("ssb"),
         "wssu_": wresults.get("ssu"),
@@ -184,14 +195,17 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
     with joblib.Parallel(n_jobs=njobs) as jobs:
         wresults = jobs(
             joblib.delayed(subproblem)(
-                amtx, climit=climit, alpha=alpha,
-                ntest=ntest, ntest_kwargs=ntest_kwargs)
+                amtx,
+                climit=climit,
+                alpha=alpha,
+                ntest=ntest,
+                ntest_kwargs=ntest_kwargs)
             for amtx in abc)
 
     # copy alt results to the global results
     results.update({
-        "mtx_participants_": tuple(r["nproducts"] for r in wresults),
-        "asctotal_": np.hstack(r["sctotal"] for r in wresults),
+        "amtx_criteria_": tuple(r["nproducts"] for r in wresults),
+        "asst_": np.hstack(r["sst"] for r in wresults),
         "assw_": np.hstack(r["ssw"] for r in wresults),
         "assb_": np.hstack(r["ssb"] for r in wresults),
         "assu_": np.hstack(r["ssu"] for r in wresults),
@@ -199,8 +213,9 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
         "ain_consensus_": np.hstack(r["in_consensus"] for r in wresults),
         "antest_sts_": np.vstack(r["ntest_sts"] for r in wresults),
         "antest_pvals_": np.vstack(r["ntest_pvals"] for r in wresults),
-        "antest_reject_h0_": np.vstack(r["ntest_reject_h0"] for r in wresults),
-        "mtx_mean_": np.vstack(r["resume"] for r in wresults)})
+        "antest_reject_h0_": np.vstack(
+            r["ntest_reject_h0"] for r in wresults),
+        "amtx_mean_": np.vstack(r["resume"] for r in wresults)})
 
     # CONSENSUS
     consensus = np.all(results["ain_consensus_"])
@@ -214,7 +229,6 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
         reject_h0 = reject_h0 or np.any(results["wntest_reject_h0_"])
     results["ntest_reject_h0_"] = reject_h0
 
-
     # AGGREGATION
     if consensus or not agg_only_consensus:
         aggregator = simple.WeightedSum(mnorm="none", wnorm="none")
@@ -222,28 +236,32 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
         criteria = [max] * J
 
         weights_mean = (
-            1 if results["weights_mean_"] is None else
-            results["weights_mean_"])
+            1 if results["weights_mean_"] is None else results["weights_mean_"]
+        )
         agg_m = aggregator.decide(
-            results["mtx_mean_"].T,
-            criteria=criteria, weights=weights_mean)
+            results["amtx_mean_"].T, criteria=criteria, weights=weights_mean
+        )
 
         with joblib.Parallel(n_jobs=njobs) as jobs:
             agg_p = jobs(
                 joblib.delayed(run_aggregator)(
                     idx=idx,
-                    mtxs=results["mtx_participants_"],
+                    mtxs=results["amtx_criteria_"],
                     criteria=criteria,
-                    weights=results["weights_participants_"],
-                    aggregator=aggregator)
-                for idx in range(N))
+                    weights=results["wmtx_"],
+                    aggregator=aggregator,
+                )
+                for idx in range(N)
+            )
             agg_p = tuple(agg_p)
 
             # rank verification
             ttest_results = jobs(
                 joblib.delayed(rank_ttest_rel)(
-                    agg_p=agg_p, aidx=aidx, bidx=bidx)
-                for aidx, bidx in it.combinations(range(I), 2))
+                    agg_p=agg_p, aidx=aidx, bidx=bidx
+                )
+                for aidx, bidx in it.combinations(range(I), 2)
+            )
 
             rank_t, rank_p = np.empty(I), np.empty(I)
             for idx, r in enumerate(ttest_results):
@@ -253,7 +271,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
         agg_p, agg_m, rank_t, rank_p = None, None, None, None
 
     # to global results
-    results["aggregation_participants_"] = agg_p
+    results["aggregation_criteria_"] = agg_p
     results["aggregation_mean_"] = agg_m
     results["rank_check_t_"] = rank_t
     results["rank_check_pval_"] = rank_p
@@ -264,6 +282,7 @@ def drv(weights, abc, climit, ntest, ntest_kwargs, alpha, njobs, agg_only_consen
 # =============================================================================
 # RESULT CLASS
 # =============================================================================
+
 
 @attr.s(frozen=True)
 class DRVResult(object):
@@ -279,6 +298,10 @@ class DRVResult(object):
 
     ntest_kwargs : dict or None
         Parameters for the normal test function.
+
+    alpha : float
+        significance. If the any p-value of n-test is less than `alpha`, we
+        reject the null hypothesis of the normality tests.
 
     climit : float
         Consensus limit. Maximum value of the IVR to asume that the solution
@@ -298,39 +321,43 @@ class DRVResult(object):
     J_ : int
         Number of criteria.
 
-    consensus_ : bool.
+    consensus_ : bool
         If all the sub-problems are in consensus. In other words if
         every problem has ther IVR <= climit.
 
+    ntest_reject_h0_ : bool
+        True if any subproble reject one of their normality test H0 then this.
+
     weights_mean_ : array or None
         If the weight preference if provided, this attribute contains
-        a array where every i-nth element is mean of the weights asigned by
-        the participants to the in-th criteria.
+        a array where every j-nth element is mean of the weights assigned by
+        the participants to the j-nth criteria.
 
-    weights_participants_ : array or None
+    wmtx_ : array or None
         If the weight preference if provided, this attribute contains
-        a 2D array where every row is a weight asigned by a single particpant.
+        a 2D array where every row is a weight assigned by a single
+        participant.
 
-    wsctotal_ : float or None
+    wsst_ : float or None
         Weights sub-problem Square Sum Total.
         If the weight preference if provided, this attribute contains
         the total sum of squares of the weight sub-problem. This value
         is calculated as
-        `sum((weights_participants_ - mean(weights_participants_))**2))`.
+        `sum((wmtx_ - mean(wmtx_))**2))`.
 
     wssw_ : float or None
-        Weights sub-problem Square-Sum Within
+        Weights sub-problem Square-Sum Within.
         If the weight preference if provided, this attribute contains
         the sum of squares within criteria of the weight sub-problem, and
         represents the residual variability after a stage of analysis.
         This value is calculated as
-        `sum((weights_participants_ - mean_by_row(weights_participants_))**2))`
+        `sum((wmtx_ - mean_by_row(wmtx_))**2))`
 
     wssb_ : float or None
-        Weights sub-problem Square-Sum Between
+        Weights sub-problem Square-Sum Between.
         If the weight preference if provided, this attribute contains
         the sum of squares between criteria of the weight sub-problem,
-        This value is calculated as `wsctotal_ - wssw_`.
+        This value is calculated as `wsst_ - wssw_`.
 
     wssu_ : float or None
         Weights sub-problem Square-Sum of Uniform distribution.
@@ -346,20 +373,94 @@ class DRVResult(object):
     win_consensus_ : bool or None
         Weights sub-problem In Consensus.
         If the weight preference if provided, this attribute contains
-        the weights sub-problem is in consensus. I other words if all
-        the weight sub-problem `IVR <= climit`.
+        the weights sub-problem is in consensus. In other words if all
+        the weight sub-problem `wivr_ <= climit`.
 
     wntest_sts_ : ndarray or None
         Weights Normal Test Statistics.
         If the weight preference if provided, this attribute contains an array
         with the normality test statistic by criteria.
 
-    wntest_pvals_ : ndarray or None
+    wntest_pvals_ : array or None
         Weights Normal Test P-value.
         If the weight preference if provided, this attribute contains an array
         with the normality test Normality test p-value by criteria. This
         values are useful if you have an small number of criteria to reinforce
         the assumption normality.
+
+    wntest_reject_h0_ : array or None
+        If the weight preference if provided, this attribute contains an array
+        where the j-nth element is True if the normality test fails for
+        the values of the criteria j-nth.
+
+    amtx_criteria_ : tuple of arrays
+        Alternatives matrix by criteria.
+        A tuple where the j-nth element is a 2D array of preference of
+        the `I_` alternatives by the criteria j.
+
+    asst_ : array
+        Alternatives by criteria sub-problems Square-Sum Within.
+        Array where the j-nth element is the total sum of squares of the
+        evaluation of the alternatives by the criteria j.
+        Every element on this array  is calculated as
+        `sum((amtx_criteria_[j] - mean(amtx_criteria_[j]))**2))`.
+
+    assw_ : array
+        Alternatives by criteria  sub-problems Square-Sum Within.
+        Array where the j-nth element is the total sum of squares within
+        of the evaluation of the alternatives by the criteria j, and
+        represents the residual variability after a stage of analysis.
+        Every element on this array  is calculated as
+        `sum((amtx_criteria_[j] - mean_by_row(amtx_criteria_[j]))**2))`
+
+    assb_ : array
+        Alternatives by criteria sub-problems Square-Sum Between.
+        Array where the j-nth element is the total sum of squares between
+        of the evaluation of the alternatives by the criteria j.
+        Every element on this array  is calculated as `asst_ - assw_`.
+
+    assu_ : array
+        Alternatives by criteria  sub-problems Square-Sum of Uniform
+        distribution. Corresponds to the uniform distribution and reflects a
+        situation of complete disagreement within the group.
+
+    aivr_ : array
+        Alternatives by criteria sub-problems Índice de Variabilidad Remanente
+        (Translation: Remaining Variability Index).
+        Array where the j-nth element a ratio of agreement of the alternatives
+        by the criteria j. Is calculated as follows: `assw_ / assu_`.
+
+    ain_consensus_ : array
+        Alternatives by criteria sub-problems In Consensus.
+        Array where the j-nth element is True if the alternatives
+        by the criteria j are in consensus. In other words if
+        `aivr_[j] <= climit`.
+
+    amtx_mean_ : 2D array
+        Alternative matrix.
+        Created as a mean of all alternatives matrix by criteria.
+
+    antest_sts_ : 2D array
+        Alternatives by criteria sub-problems Normal Test Statistics.
+        Array where the A_ij element contains the statistic of the normality
+        test for the alternative i under the criteria j.
+
+    antest_pvals_ : 2D array
+        Alternatives by criteria sub-problems Normal Test Statistics.
+        Array where the A_ij element contains the p-value of the normality
+        test for the alternative i under the criteria j.
+
+    antest_reject_h0_ : 2D array
+        Alternatives by criteria sub-problems status of the null hypothesis.
+        Array where the A_ij element contains the null hypotesys of the
+        normality test for the alternative i under the criteria j must be
+        rejected.
+
+    aggregation_criteria_ : tuple
+    aggregation_mean_ : skcriteria.madm.Decision
+    rank_check_t_ : array or None
+    rank_check_pval_ : array or None
+
 
     """
 
@@ -375,8 +476,8 @@ class DRVResult(object):
     consensus_ = attr.ib()
     ntest_reject_h0_ = attr.ib()
 
-    weights_participants_ = attr.ib(repr=False)
-    wsctotal_ = attr.ib(repr=False)
+    wmtx_ = attr.ib(repr=False)
+    wsst_ = attr.ib(repr=False)
     wssw_ = attr.ib(repr=False)
     wssb_ = attr.ib(repr=False)
     wssu_ = attr.ib(repr=False)
@@ -387,19 +488,19 @@ class DRVResult(object):
     wntest_pvals_ = attr.ib(repr=False)
     wntest_reject_h0_ = attr.ib(repr=False)
 
-    mtx_participants_ = attr.ib(repr=False)
-    asctotal_ = attr.ib(repr=False)
+    amtx_criteria_ = attr.ib(repr=False)
+    asst_ = attr.ib(repr=False)
     assw_ = attr.ib(repr=False)
     assb_ = attr.ib(repr=False)
     assu_ = attr.ib(repr=False)
     aivr_ = attr.ib(repr=False)
     ain_consensus_ = attr.ib(repr=False)
-    mtx_mean_ = attr.ib(repr=False)
+    amtx_mean_ = attr.ib(repr=False)
     antest_sts_ = attr.ib(repr=False)
     antest_pvals_ = attr.ib(repr=False)
     antest_reject_h0_ = attr.ib(repr=False)
 
-    aggregation_participants_ = attr.ib(repr=False)
+    aggregation_criteria_ = attr.ib(repr=False)
     aggregation_mean_ = attr.ib(repr=False)
     rank_check_t_ = attr.ib(repr=False)
     rank_check_pval_ = attr.ib(repr=False)
@@ -419,7 +520,8 @@ class DRVResult(object):
         return self.weights_mean_ is not None
 
     @property
-    def data(self):
+    def data_(self):
+        """Data object used in the aggregation mean or None"""
         if self.aggregation_mean_ is not None:
             return self.aggregation_mean_.data
 
@@ -427,6 +529,7 @@ class DRVResult(object):
 # =============================================================================
 # API
 # =============================================================================
+
 
 @attr.s(frozen=True)
 class DRVProcess(object):
@@ -487,6 +590,7 @@ class DRVProcess(object):
            pp. 319–330. ISBN 0-534-91976-6.
 
     """
+
     climit: float = attr.ib(default=.25)
     ntest: str = attr.ib(default="shapiro")
     ntest_kwargs: dict = attr.ib(default=None)
@@ -517,15 +621,14 @@ class DRVProcess(object):
     def ntest_check(self, attribute, value):
         if value not in NORMAL_TESTS and not callable(value):
             ntests = tuple(NORMAL_TESTS)
-            raise ValueError(
-                f"'ntests' must be a callable or str in {ntests}")
+            raise ValueError(f"'ntests' must be a callable or str in {ntests}")
 
     @ntest_kwargs.validator
     def ntest_kwargs_check(self, attribute, value):
         if value is not None and not isinstance(value, dict):
             raise ValueError("'ntest_kwargs' must be a dict or None")
 
-    def decide(self, abc: list, weights: np.ndarray=None) -> DRVResult:
+    def decide(self, abc: list, weights: np.ndarray = None) -> DRVResult:
         """Execute the DRV Processes.
 
         Parameters
@@ -554,13 +657,21 @@ class DRVProcess(object):
         """
         # run the rdv
         drv_result = drv(
-            weights, abc, ntest=self.ntest, ntest_kwargs=self.ntest_kwargs,
-            climit=self.climit, njobs=self.njobs, alpha=self.alpha,
+            weights,
+            abc,
+            ntest=self.ntest,
+            ntest_kwargs=self.ntest_kwargs,
+            climit=self.climit,
+            njobs=self.njobs,
+            alpha=self.alpha,
             agg_only_consensus=self.agg_only_consensus)
 
         return DRVResult(
-            climit=self.climit, ntest=self.ntest, alpha=self.alpha,
-            ntest_kwargs=self.ntest_kwargs, **drv_result)
+            climit=self.climit,
+            ntest=self.ntest,
+            alpha=self.alpha,
+            ntest_kwargs=self.ntest_kwargs,
+            **drv_result)
 
 
 # =============================================================================

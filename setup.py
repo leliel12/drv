@@ -59,7 +59,7 @@ import sc_drv
 # CONSTANTS
 # =============================================================================
 
-REQUIREMENTS = ["scikit-criteria", "pytest", "matplotlib"]
+REQUIREMENTS = ["scikit-criteria", "pytest", "matplotlib", "jinja2"]
 
 
 # =============================================================================

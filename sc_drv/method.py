@@ -56,6 +56,8 @@ import attr
 
 import joblib
 
+import jinja2
+
 from skcriteria import norm, rank
 from skcriteria.madm import simple
 
@@ -572,8 +574,61 @@ class DRVResult(object):
 
     plot = attr.ib(repr=False, init=False)
 
+    _template = jinja2.Template("""
+        <div class="drv-result" id="drv_result_{{ id }}">
+        <h5>DRV Results Resume</h5>
+        <style>
+            .red, .red code {color: #A52A2A}
+            .green, .green code {color: #008000}
+        </style>
+        <table>
+            <thead>
+                <th>Attribute</th>
+                <th>Value</th>
+            <tbody>
+                {% for n, v, cls in rows %}
+                <tr class={{ cls }}><th>{{ n|safe }}</th><td>{{ v }}</td><tr>
+                {% endfor %}
+            <tbody>
+        </table>
+        </div>
+    """)
+
     def __attrs_post_init__(self):
         object.__setattr__(self, "plot", plot.PlotProxy(self))
+
+    def _repr_html_(self):
+        if not hasattr(self, "_repr_html"):
+            cls = {True: "green", False: "red"}
+            rows = [
+                ("Normal Test (<code>ntest<code>)", self.ntest, ""),
+                (
+                    "Alpha for Normal Test (<code>alpha_norm</code>)",
+                    self.alpha_norm, ""),
+                (
+                    "Alpha for T-Test (<code>alpha_rank</code>)",
+                    self.alpha_rank, ""),
+                ("Consensus Limit (<code>climit</code>)", self.climit, ""),
+                ("Number of Participants (<code>N_</code>)", self.N_, ""),
+                ("Number of Alternatives (<code>I_</code>)", self.I_, ""),
+                ("Number of Criteria (<code>J_</code>)", self.J_, ""),
+                (
+                    "Strict Preference (<code>strict_preference_</code>)",
+                    self.strict_preference_, cls[self.strict_preference_]),
+                (
+                    "Consensus (<code>consensus</code>)",
+                    self.consensus_, cls[self.consensus_]),
+                (
+                    "N-Test Reject H0 (<code>ntest_reject_h0_</code>)",
+                    self.ntest_reject_h0_, cls[not self.ntest_reject_h0_]),
+                (
+                    "Rank Check (<code>rank_check_results_resume_</code>)",
+                    self.rank_check_results_resume_,
+                    cls[self.rank_check_results_resume_])
+            ]
+            repr_html = self._template.render(rows=rows, id=id(self))
+            object.__setattr__(self, "_repr_html", repr_html)
+        return self._repr_html
 
     @property
     def has_weights_(self):

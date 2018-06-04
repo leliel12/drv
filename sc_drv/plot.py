@@ -108,9 +108,15 @@ def pie(sizes, explode=None, labels=None, cmap=None, ax=None,
             plot_kwargs.setdefault("shadow", True)
             plot_kwargs.setdefault("startangle", 90)
 
-            labels = [
-                l if sizes[idx] > 0 else "" for idx, l in enumerate(labels)]
-            plot = ax.pie(sizes, explode=explode, labels=labels, **plot_kwargs)
+            csizes, cexplode, clabels = [], [], []
+            for size, exp, label in zip(sizes, explode, labels):
+                if size:
+                    csizes.append(size)
+                    cexplode.append(exp)
+                    clabels.append(label)
+
+            plot = ax.pie(
+                csizes, explode=cexplode, labels=clabels, **plot_kwargs)
 
             # colors in slides
             cmap = cm.get_cmap(name=cmap)

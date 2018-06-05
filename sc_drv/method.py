@@ -253,7 +253,7 @@ def drv(
         agg_m = aggregator.decide(
             results["amtx_mean_"].T, criteria=criteria, weights=weights_mean)
 
-        with joblib.Parallel(n_jobs=njobs) as jobs:
+        with joblib.Parallel(n_jobs=1) as jobs:
             agg_p = jobs(
                 joblib.delayed(run_aggregator)(
                     idx=idx,
@@ -264,6 +264,7 @@ def drv(
                 for idx in range(N))
             agg_p = tuple(agg_p)
 
+        with joblib.Parallel(n_jobs=1) as jobs:
             # rank verification
             ttest_results = jobs(
                 joblib.delayed(rank_ttest_rel)(

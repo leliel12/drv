@@ -41,8 +41,7 @@ from __future__ import unicode_literals
 # DOCS
 # =============================================================================
 
-__doc__ = """DRV processes have been developed to support Group Decision
-Making.
+__doc__ = """DRV processes: Group Decision Making.
 
 They are applicable to the cases in which
 all members of the group operate in the same organization and, therefore,
@@ -56,11 +55,13 @@ group members.
 # CONSTANTS
 # =============================================================================
 
-__version__ = ("0", "1")
+__version__ = ("0", "1b0")
 
 NAME = "sc-drv"
 
-DOC = __doc__
+LONG_DESCRIPTION = "\n".join([l.strip() for l in __doc__.splitlines()])
+
+DESCRIPTION = LONG_DESCRIPTION.splitlines()[0]
 
 VERSION = ".".join(__version__)
 
@@ -68,11 +69,11 @@ AUTHORS = "Cabral, Luczywo & Zanazzi"
 
 EMAIL = "jbc.develop@gmail.com"
 
-URL = "https://github.com/leliel12/drv"
+URL = "https://github.com/leliel12/sc_drv"
 
 LICENSE = "3 Clause BSD"
 
-KEYWORDS = "mcda mcdm groupd-decision-making muti-criteria".split()
+KEYWORDS = "mcda mcdm group-decision-making muti-criteria".split()
 
 
 # =============================================================================

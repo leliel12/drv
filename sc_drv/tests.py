@@ -186,16 +186,6 @@ class DRVTestCase(unittest.TestCase):
         np.testing.assert_allclose(result.wssu_, 0.2381, rtol=1e-03)
         np.testing.assert_allclose(result.wivr_, 0.145, rtol=1e-03)
 
-    def test_drv_shapiro_consensus_mp(self):
-        dec = DRVProcess(njobs=-1, ntest="shapiro")
-        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
-        np.testing.assert_allclose(result.wmtx_, self.e_wp_matrix)
-        np.testing.assert_allclose(result.wsst_, 0.3178, rtol=1e-03)
-        np.testing.assert_allclose(result.wssw_, 0.0345, rtol=1e-03)
-        np.testing.assert_allclose(result.wssb_, 0.2833, rtol=1e-03)
-        np.testing.assert_allclose(result.wssu_, 0.2381, rtol=1e-03)
-        np.testing.assert_allclose(result.wivr_, 0.145, rtol=1e-03)
-
     def test_drv_shapiro_consensus(self):
         dec = DRVProcess(njobs=1, ntest="shapiro")
         result = dec.decide(weights=self.wmtx, abc=self.abc_c)

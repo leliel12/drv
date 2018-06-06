@@ -25,7 +25,7 @@ group members.
 The easiest way to install sc_drv is using `pip`
 
 ```bash
-    pip install -U sc_drv
+    $ pip install -U sc-drv
 ```
 
 

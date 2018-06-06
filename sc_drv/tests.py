@@ -261,10 +261,16 @@ class DRVTestCase(unittest.TestCase):
         self.assertIsInstance(
             result.plot.utilities_by_alternatives(1, ptype=ptype), axes.Axes)
 
-    def test_consensus_plot(self):
+    def test_preference(self):
         dec = DRVProcess(njobs=1, ntest="ks")
         result = dec.decide(weights=self.wmtx, abc=self.abc_c)
-        self.assertIsInstance(result.plot.consensus(), axes.Axes)
+        self.assertIsInstance(result.plot(), axes.Axes)
+        self.assertIsInstance(result.plot.preference(), axes.Axes)
+
+    def test_npvals_heatmap_plot(self):
+        dec = DRVProcess(njobs=1, ntest="ks")
+        result = dec.decide(weights=self.wmtx, abc=self.abc_c)
+        self.assertIsInstance(result.plot.npvals_heatmap(), axes.Axes)
 
     def test_ivr_plot(self):
         dec = DRVProcess(njobs=1, ntest="ks")

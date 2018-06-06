@@ -84,50 +84,11 @@ def box_violin_plot(mtx, ptype="box", cmap=None, ax=None,
 
     # colors in boxes
     cmap = cm.get_cmap(name=cmap)
-    colors = cmap(np.linspace(0.35, 0.8, mtx.shape[1]))
+    colors = cmap(np.linspace(0, 1., mtx.shape[1]))
     for box, color in zip(plot[key], colors):
         box.set_facecolor(color)
     ax.get_figure().tight_layout()
     return ax
-
-
-def pie(sizes, explode=None, labels=None, cmap=None, ax=None,
-        subplots_kwargs=None, plot_kwargs=None):
-            # create ax if necesary
-            if ax is None:
-                subplots_kwargs = subplots_kwargs or {}
-                ax = plt.subplots(**subplots_kwargs)[-1]
-
-            if explode is None:
-                explode = [0] * len(sizes)
-            if labels is None:
-                labels = ["Data {}".format(idx) for idx in range(len(sizes))]
-
-            plot_kwargs = plot_kwargs or {}
-            plot_kwargs.setdefault("autopct", '%1.1f%%')
-            plot_kwargs.setdefault("shadow", True)
-            plot_kwargs.setdefault("startangle", 90)
-
-            csizes, cexplode, clabels = [], [], []
-            for size, exp, label in zip(sizes, explode, labels):
-                if size:
-                    csizes.append(size)
-                    cexplode.append(exp)
-                    clabels.append(label)
-
-            plot = ax.pie(
-                csizes, explode=cexplode, labels=clabels, **plot_kwargs)
-
-            # colors in slides
-            cmap = cm.get_cmap(name=cmap)
-            colors = cmap(np.linspace(0.35, 0.8, len(sizes)))
-            for wedge, color in zip(plot[0], colors):
-                wedge.set_facecolor(color)
-
-            ax.axis('equal')
-            ax.get_figure().tight_layout()
-
-            return ax
 
 
 def bar(values, cmap=None, ax=None,
@@ -145,7 +106,7 @@ def bar(values, cmap=None, ax=None,
             # colors in bars
             idxs = np.arange(len(values))
             cmap = cm.get_cmap(name=cmap)
-            colors = cmap(np.linspace(0.35, 0.8, len(values)))
+            colors = cmap(np.linspace(0., 1., len(values)))
             for idx, val, color in zip(idxs, values, colors):
                 ax.bar(idx, val, color=color, **plot_kwargs)
             ax.get_figure().tight_layout()
@@ -200,9 +161,68 @@ class PlotProxy(object):
 
     data = attr.ib()
 
-    def __call__(self, kind="ivr", **kwargs):
+    def __call__(self, kind="preference", **kwargs):
         func = getattr(self, kind)
         return func(**kwargs)
+
+    def _props(self, arr, warr):
+        total = float(len(arr))
+        count = np.sum(arr)
+
+        if warr is not None:
+            total += len(warr)
+            count += np.sum(warr)
+
+        trues = count / total
+        falses = 1 - trues
+        return trues, falses
+
+    def preference(self, **kwargs):
+        # create ax if necesary
+        ax = kwargs.get("ax")
+        if ax is None:
+            subplots_kwargs = kwargs.get("subplots_kwargs", {})
+            ax = plt.subplots(**subplots_kwargs)[-1]
+
+        cons_prop = self._props(
+            self.data.ain_consensus_, [self.data.win_consensus_])
+        norm_prop = self._props(
+            ~self.data.antest_reject_h0_.ravel(),
+            ~self.data.wntest_reject_h0_ if self.data.has_weights_ else None)
+
+        trues = (cons_prop[0], norm_prop[0])
+        falses = (cons_prop[1], norm_prop[1])
+        ticks = [
+            f"Consensus\n(IVR < climit)\nclimit={self.data.climit}",
+            f"N-Test\n(H0 No rejected)\nalpha={self.data.alpha_norm}"]
+
+        if self.data.rank_check_results_ is not None:
+            rank_check = self._props(
+                self.data.rank_check_results_, None)
+            trues += (rank_check[0],)
+            falses += (rank_check[1],)
+            ticks.append(
+                f"Rank Check\n(P-Vals < BY FDR)\nalpha={self.data.alpha_rank}")
+
+        ind = np.arange(len(trues))
+
+        plot_kwargs = kwargs.get("plot_kwargs", {})
+        plot_kwargs.setdefault("width", 0.35)
+
+        cmap = cm.get_cmap(name=kwargs.get("cmap"))
+        colors = cmap(np.linspace(0., 1., 2))
+
+        ax.bar(ind, trues, color=colors[0], **plot_kwargs)
+        ax.bar(ind, falses, color=colors[1], bottom=trues, **plot_kwargs)
+
+        ax.set_ylabel('Proportions')
+        ax.set_title('Preference')
+        ax.set_xticks(ind)
+        ax.set_xticklabels(ticks, rotation=15)
+        ax.set_yticks(np.arange(0, 1.1, 0.25))
+        ax.set_ylim(0, 1.1)
+        ax.legend(('Asserts', 'Fails'))
+        return ax
 
     def ivr(self, **kwargs):
         """Consensus level achieved by the subproblems as a barchart.
@@ -242,22 +262,16 @@ class PlotProxy(object):
         ax.set_xlabel("Subproblems")
         ax.set_xticks(range(n_groups))
         ax.set_xticklabels(labels)
-
-        yticks = np.append(ax.get_yticks(), self.data.climit)
-        yticks.sort()
-        ax.set_yticks(yticks)
-        ax.legend(["climit"])
+        ax.legend([f"climit={self.data.climit}"])
 
         return ax
 
-    def consensus(self, **kwargs):
-        """Piechart with the proportion subproblem with and without consensus.
+    def npvals_heatmap(self, **kwargs):
+        """Create a heat-map matrix of the pvals of normality test for
+        the utilities and, i are available, the weights.
 
         Parameters
         ----------
-
-        explode: tuple of length 2, optional (default=(0, 0.1))
-            Separation between the slides.
 
         cmap: str, optional (default: None)
             Color map. If is None the default colormap is used.
@@ -268,24 +282,29 @@ class PlotProxy(object):
             Parameters to the subplot function if no axis is provided.
 
         plot_kwargs : dict or None
-            Parameters of the `maptplotlib.pyplot.pie` function.
+            Parameters of the `maptplotlib.pyplot.imshow` function.
 
         """
-        total = float(len(self.data.ain_consensus_))
-        count = np.sum(self.data.ain_consensus_)
+        row_labels = [
+            "$j_{}$".format(idx) for idx in range(self.data.J_)]
+        col_labels = [
+            "$I_{}$".format(idx) for idx in range(self.data.I_)]
+
+        data = self.data.antest_pvals_
 
         if self.data.has_weights_:
-            total += 1
-            count += int(self.data.win_consensus_)
+            data = np.column_stack([self.data.wntest_pvals_, data])
+            col_labels.insert(0, "Weights")
+            title = "Weights & Utilities Normality Test P-Vals"
+        else:
+            title = "Utilities Normality Test P-Vals"
 
-        trues = count / total
-        falses = 1 - trues
+        ax = annotated_heatmap(
+            values=data, row_labels=row_labels, col_labels=col_labels,
+            cbar_label=f"P-Vals (alpha={self.data.alpha_norm})", **kwargs)
 
-        labels = 'Consensus', 'No-Consensus'
-        kwargs.setdefault("explode", (0, 0.1))
-
-        ax = pie((trues, falses), labels=labels, **kwargs)
-        ax.set_title("Consensus Proportion")
+        ax.set_ylabel("Criteria")
+        ax.set_title(title, y=1.15)
 
         return ax
 

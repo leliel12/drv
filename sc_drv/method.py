@@ -127,7 +127,6 @@ def subproblem(mtx, climit, ntest, ntest_kwargs, alpha_norm):
 # AGGREGATION STAGE
 # =============================================================================
 
-
 def run_aggregator(idx, mtxs, criteria, weights, aggregator):
     """Helper to run the aggregator with joblib"""
     mtx = np.vstack(m[idx] for m in mtxs).T

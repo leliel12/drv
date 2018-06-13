@@ -266,48 +266,6 @@ class PlotProxy(object):
 
         return ax
 
-    def npvals_heatmap(self, **kwargs):
-        """Create a heat-map matrix of the pvals of normality test for
-        the utilities and, i are available, the weights.
-
-        Parameters
-        ----------
-
-        cmap: str, optional (default: None)
-            Color map. If is None the default colormap is used.
-
-        ax: matplotlib axes object, default None.
-
-        subplots_kwargs : dict or None
-            Parameters to the subplot function if no axis is provided.
-
-        plot_kwargs : dict or None
-            Parameters of the `maptplotlib.pyplot.imshow` function.
-
-        """
-        row_labels = [
-            "$j_{}$".format(idx) for idx in range(self.data.J_)]
-        col_labels = [
-            "$I_{}$".format(idx) for idx in range(self.data.I_)]
-
-        data = self.data.antest_pvals_
-
-        if self.data.has_weights_:
-            data = np.column_stack([self.data.wntest_pvals_, data])
-            col_labels.insert(0, "Weights")
-            title = "Weights & Utilities Normality Test P-Vals"
-        else:
-            title = "Utilities Normality Test P-Vals"
-
-        ax = annotated_heatmap(
-            values=data, row_labels=row_labels, col_labels=col_labels,
-            cbar_label=f"P-Vals (alpha={self.data.alpha_norm})", **kwargs)
-
-        ax.set_ylabel("Criteria")
-        ax.set_title(title, y=1.15)
-
-        return ax
-
     def weight_heatmap(self, **kwargs):
         """Create a heat-map matrix of the selected weight.
 

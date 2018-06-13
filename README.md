@@ -58,7 +58,7 @@ library for Windows, Mac OSX and Linux.
 
 ## Documentation
 
-- Tutorial [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/leliel12/sc_drv/master?filepath=notebooks%2Ftutorial.ipynb)
+- [Interactive Tutorial](https://mybinder.org/v2/gh/leliel12/sc_drv/master?filepath=notebooks%2Ftutorial.ipynb)
 
 
 ## Authors

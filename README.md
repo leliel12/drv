@@ -75,10 +75,6 @@ library for Windows, Mac OSX and Linux.
 
 ## References
 
--   Zanazzi, J. L., Gomes, L. F. A. M., & Dimitroff, M. (2014). Group decision
-    making applied to preventive maintenance systems. Pesquisa Operacional,
-    34(1), 91-105.
--   Cabral, J. B., Luczywo, N. A., & Zanazzi, J. L. (2016). Scikit-Criteria:
-    colección de métodos de análisis multi-criterio integrado al stack
-    científico de Python. In XIV Simposio Argentino de Investigación Operativa
-    (SIO 2016)-JAIIO 45 (Tres de Febrero, 2016).
+>   Zanazzi, J. L., Gomes, L. F. A. M., & Dimitroff, M. (2014). Group decision making applied to preventive maintenance systems. Pesquisa Operacional, 34(1), 91-105.
+>
+> Cabral, J. B., Luczywo, N. A., & Zanazzi, J. L. (2016). Scikit-Criteria: colección de métodos de análisis multi-criterio integrado al stack científico de Python. In XIV Simposio Argentino de Investigación Operativa (SIO 2016)-JAIIO 45 (Tres de Febrero, 2016).

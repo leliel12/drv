@@ -286,6 +286,15 @@ class DRVTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             result.plot.utilities_by_alternatives(1, ptype=ptype)
 
+    def test_comb_I_2(self):
+        # test the number of t-test is constent witht the
+        # comb I in 2.
+        abc = [np.random.rand(6, 4) for _ in range(7)]
+        dec = DRVProcess(njobs=1, agg_only_consensus=False)
+
+        # in old times this fails
+        dec.decide(weights=self.wmtx, abc=abc)
+
 
 # =============================================================================
 # MAIN

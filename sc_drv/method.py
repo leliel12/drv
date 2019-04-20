@@ -270,7 +270,8 @@ def drv(
                     agg_p=agg_p, aidx=aidx, bidx=bidx)
                 for aidx, bidx in it.combinations(range(I), 2))
 
-            rank_t, rank_p = np.empty(I), np.empty(I)
+            ttest_size = len(ttest_results)
+            rank_t, rank_p = np.empty(ttest_size), np.empty(ttest_size)
             for idx, r in enumerate(ttest_results):
                 rank_t[idx] = r.statistic
                 rank_p[idx] = r.pvalue

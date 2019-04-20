@@ -129,7 +129,7 @@ def subproblem(mtx, climit, ntest, ntest_kwargs, alpha_norm):
 
 def run_aggregator(idx, mtxs, criteria, weights, aggregator):
     """Helper to run the aggregator with joblib"""
-    mtx = np.vstack(m[idx] for m in mtxs).T
+    mtx = np.vstack([m[idx] for m in mtxs]).T
     weight = 1 if weights is None else weights[idx]
     return aggregator.decide(mtx, criteria=criteria, weights=weight)
 
@@ -215,18 +215,18 @@ def drv(
 
     # copy alt results to the global results
     results.update({
-        "amtx_criteria_": tuple(r["nproducts"] for r in wresults),
-        "asst_": np.hstack(r["sst"] for r in wresults),
-        "assw_": np.hstack(r["ssw"] for r in wresults),
-        "assb_": np.hstack(r["ssb"] for r in wresults),
-        "assu_": np.hstack(r["ssu"] for r in wresults),
-        "aivr_": np.hstack(r["ivr"] for r in wresults),
-        "ain_consensus_": np.hstack(r["in_consensus"] for r in wresults),
-        "antest_sts_": np.vstack(r["ntest_sts"] for r in wresults),
-        "antest_pvals_": np.vstack(r["ntest_pvals"] for r in wresults),
-        "antest_reject_h0_": np.vstack(
-            r["ntest_reject_h0"] for r in wresults),
-        "amtx_mean_": np.vstack(r["resume"] for r in wresults)})
+        "amtx_criteria_": tuple([r["nproducts"] for r in wresults]),
+        "asst_": np.hstack([r["sst"] for r in wresults]),
+        "assw_": np.hstack([r["ssw"] for r in wresults]),
+        "assb_": np.hstack([r["ssb"] for r in wresults]),
+        "assu_": np.hstack([r["ssu"] for r in wresults]),
+        "aivr_": np.hstack([r["ivr"] for r in wresults]),
+        "ain_consensus_": np.hstack([r["in_consensus"] for r in wresults]),
+        "antest_sts_": np.vstack([r["ntest_sts"] for r in wresults]),
+        "antest_pvals_": np.vstack([r["ntest_pvals"] for r in wresults]),
+        "antest_reject_h0_": np.vstack([
+            r["ntest_reject_h0"] for r in wresults]),
+        "amtx_mean_": np.vstack([r["resume"] for r in wresults])})
 
     # CONSENSUS
     consensus = np.all(results["ain_consensus_"])

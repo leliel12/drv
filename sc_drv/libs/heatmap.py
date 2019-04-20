@@ -108,6 +108,9 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     Further arguments are passed on to the created text labels.
     """
+    if len(textcolors) != 2:
+        raise ValueError("Text color must be only 2")
+
     if not isinstance(data, (list, np.ndarray)):
         data = im.get_array()
 
@@ -132,7 +135,8 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     texts = []
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            kw.update(color=textcolors[im.norm(data[i, j]) > threshold])
+            text_color = textcolors[int(im.norm(data[i, j]) > threshold)]
+            kw.update(color=text_color)
             text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
             texts.append(text)
 

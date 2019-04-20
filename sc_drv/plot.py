@@ -94,23 +94,23 @@ def box_violin_plot(mtx, ptype="box", cmap=None, ax=None,
 def bar(values, cmap=None, ax=None,
         subplots_kwargs=None, plot_kwargs=None):
 
-            # create ax if necesary
-            if ax is None:
-                subplots_kwargs = subplots_kwargs or {}
-                ax = plt.subplots(**subplots_kwargs)[-1]
+    # create ax if necesary
+    if ax is None:
+        subplots_kwargs = subplots_kwargs or {}
+        ax = plt.subplots(**subplots_kwargs)[-1]
 
-            plot_kwargs = plot_kwargs or {}
-            plot_kwargs.setdefault("width", 0.35)
-            plot_kwargs.setdefault("alpha", 0.4)
+    plot_kwargs = plot_kwargs or {}
+    plot_kwargs.setdefault("width", 0.35)
+    plot_kwargs.setdefault("alpha", 0.4)
 
-            # colors in bars
-            idxs = np.arange(len(values))
-            cmap = cm.get_cmap(name=cmap)
-            colors = cmap(np.linspace(0., 1., len(values)))
-            for idx, val, color in zip(idxs, values, colors):
-                ax.bar(idx, val, color=color, **plot_kwargs)
-            ax.get_figure().tight_layout()
-            return ax
+    # colors in bars
+    idxs = np.arange(len(values))
+    cmap = cm.get_cmap(name=cmap)
+    colors = cmap(np.linspace(0., 1., len(values)))
+    for idx, val, color in zip(idxs, values, colors):
+        ax.bar(idx, val, color=color, **plot_kwargs)
+    ax.get_figure().tight_layout()
+    return ax
 
 
 def annotated_heatmap(values, row_labels, col_labels, cbar_label, cmap=None,

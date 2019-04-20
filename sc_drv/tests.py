@@ -289,11 +289,12 @@ class DRVTestCase(unittest.TestCase):
     def test_comb_I_2(self):
         # test the number of t-test is constent witht the
         # comb I in 2.
-        abc = [np.random.rand(6, 4) for _ in range(7)]
-        dec = DRVProcess(njobs=1, agg_only_consensus=False)
+        for i in [4, 5, 6, 7, 11]:
+            abc = [np.random.rand(6, i) for _ in range(7)]
+            dec = DRVProcess(njobs=1, agg_only_consensus=False)
 
-        # in old times this fails
-        dec.decide(weights=self.wmtx, abc=abc)
+            # in old times this fails
+            dec.decide(weights=self.wmtx, abc=abc)
 
 
 # =============================================================================
